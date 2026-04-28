@@ -34,10 +34,10 @@ export const Header = ({ variant = "default" }: HeaderProps) => {
       <header className="mx-auto w-full px-6 pt-4 sm:px-6 sm:pt-6">
         <div
           className={clsx(
-            "flex items-center justify-between rounded-t-[30px] rounded-b-none px-5 py-4 md:rounded-t-[60px] lg:px-[64px] md:px-8",
+            "flex items-center justify-between rounded-t-[30px] rounded-b-none px-5 py-4 md:rounded-t-[60px] lg:px-16 md:px-8",
             isHome
               ? "bg-[#8456F0] text-white"
-              : "border-x border-t border-violet-100 bg-white text-slate-900",
+              : "bg-white text-slate-900",
           )}
         >
           <Link href="/" className="flex items-center gap-2">
@@ -55,7 +55,7 @@ export const Header = ({ variant = "default" }: HeaderProps) => {
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  "rounded-[30px] px-[20px] py-[15px] text-sm transition",
+                  "rounded-[30px] px-5 py-3.75 text-sm transition",
                   isHome
                     ? "border border-white/40 hover:bg-white/12"
                     : "border border-violet-200 bg-violet-50/50 hover:border-violet-500 hover:bg-violet-100",
@@ -80,7 +80,12 @@ export const Header = ({ variant = "default" }: HeaderProps) => {
               onClick={() => setIsMenuOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-full transition lg:hidden"
             >
-              <MenuIcon className="text-white w-9 h-9" />
+              <MenuIcon
+                className={clsx(
+                  "h-9 w-9",
+                  isHome ? "text-white" : "text-[#262626]",
+                )}
+              />
             </button>
           </div>
         </div>
