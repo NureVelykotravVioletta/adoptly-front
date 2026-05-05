@@ -4,6 +4,11 @@ export type RegisterPayload = {
   password: string;
 };
 
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
 export type AuthUser = {
   id: string;
   name: string;
@@ -61,6 +66,31 @@ export async function register(payload: RegisterPayload) {
   if (!response.ok) {
     throw new ApiError(
       data?.message ?? "Не вдалося завершити реєстрацію",
+      response.status,
+    );
+  }
+
+  return data as AuthResponse;
+}
+
+export async function login(payload: LoginPayload) {
+  const response = await fetch(createApiUrl("/auth/login"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+
+  const data = (await response.json().catch(() => null)) as
+    | AuthResponse
+    | { message?: string }
+    | null;
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message ?? "Не вдалося виконати вхід",
       response.status,
     );
   }
