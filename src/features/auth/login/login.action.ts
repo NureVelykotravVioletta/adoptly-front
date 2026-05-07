@@ -1,8 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiError, login } from "@/src/features/auth/auth.api";
+import { setAuthSession } from "@/src/features/auth/auth.session";
 import { loginFormSchema } from "@/src/features/auth/login/login.schema";
 import type { LoginActionState } from "@/src/features/auth/login/login.types";
 
@@ -42,23 +42,7 @@ export async function loginAction(
       password: parsed.data.password,
     });
 
-    const cookieStore = await cookies();
-
-    cookieStore.set("auth_token", response.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    cookieStore.set("user_role", response.user.role, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    await setAuthSession(response);
 
     redirectPath = "/profile";
   } catch (error) {

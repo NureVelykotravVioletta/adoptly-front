@@ -1,8 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiError, register } from "@/src/features/auth/auth.api";
+import { setAuthSession } from "@/src/features/auth/auth.session";
 import { registerFormSchema } from "@/src/features/auth/register/register.schema";
 import type { RegisterActionState } from "@/src/features/auth/register/register.types";
 
@@ -45,23 +45,7 @@ export async function registerAction(
       password: parsed.data.password,
     });
 
-    const cookieStore = await cookies();
-
-    cookieStore.set("auth_token", response.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    cookieStore.set("user_role", response.user.role, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    await setAuthSession(response);
 
     redirectPath = "/profile";
   } catch (error) {

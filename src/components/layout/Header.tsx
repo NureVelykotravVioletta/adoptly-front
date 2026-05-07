@@ -4,6 +4,8 @@ import clsx from "clsx";
 import Link from "next/link";
 import { HeaderAuthLinks } from "@/src/components/layout/HeaderAuthLinks";
 import { HeaderSidebar } from "@/src/components/layout/HeaderSidebar";
+import { HeaderUser } from "@/src/components/layout/HeaderUser";
+import type { AuthUser } from "@/src/features/auth/auth.api";
 import Logo from "../../assets/icons/Logo.svg";
 import MenuIcon from "../../assets/icons/MenuIcon.svg";
 
@@ -15,9 +17,10 @@ const navItems = [
 
 type HeaderProps = {
   variant?: "home" | "default";
+  user?: AuthUser | null;
 };
 
-export const Header = ({ variant = "default" }: HeaderProps) => {
+export const Header = ({ variant = "default", user = null }: HeaderProps) => {
   const isHome = variant === "home";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -37,7 +40,7 @@ export const Header = ({ variant = "default" }: HeaderProps) => {
             "flex items-center justify-between rounded-t-[30px] rounded-b-none px-5 py-4 md:rounded-t-[60px] lg:px-16 md:px-8",
             isHome
               ? "bg-[#8456F0] text-white"
-              : "bg-white text-slate-900",
+              : "bg-[#F9F9F9] text-slate-900",
           )}
         >
           <Link href="/" className="flex items-center gap-2">
@@ -67,11 +70,20 @@ export const Header = ({ variant = "default" }: HeaderProps) => {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <HeaderAuthLinks
-              isHome={isHome}
-              placement="desktop"
-              onNavigate={() => setIsMenuOpen(false)}
-            />
+            {user ? (
+              <HeaderUser
+                user={user}
+                isHome={isHome}
+                placement="desktop"
+                onNavigate={() => setIsMenuOpen(false)}
+              />
+            ) : (
+              <HeaderAuthLinks
+                isHome={isHome}
+                placement="desktop"
+                onNavigate={() => setIsMenuOpen(false)}
+              />
+            )}
 
             <button
               type="button"
@@ -94,6 +106,7 @@ export const Header = ({ variant = "default" }: HeaderProps) => {
       <HeaderSidebar
         isOpen={isMenuOpen}
         navItems={navItems}
+        user={user}
         onClose={() => setIsMenuOpen(false)}
       />
     </>

@@ -23,7 +23,7 @@ export default function RootLayout({
       <body
         className={clsx(
           manrope.className,
-          "min-h-screen bg-white text-gray-900"
+          "min-h-screen bg-[#F9F9F9] text-gray-900"
         )}
       >
         {children}

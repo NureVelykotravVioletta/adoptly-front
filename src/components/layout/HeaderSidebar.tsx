@@ -3,6 +3,8 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { HeaderAuthLinks } from "@/src/components/layout/HeaderAuthLinks";
+import { HeaderUser } from "@/src/components/layout/HeaderUser";
+import type { AuthUser } from "@/src/features/auth/auth.api";
 import CloseIcon from "../../assets/icons/CloseIcon.svg";
 
 type NavItem = {
@@ -13,12 +15,14 @@ type NavItem = {
 type HeaderSidebarProps = {
   isOpen: boolean;
   navItems: NavItem[];
+  user?: AuthUser | null;
   onClose: () => void;
 };
 
 export const HeaderSidebar = ({
   isOpen,
   navItems,
+  user = null,
   onClose,
 }: HeaderSidebarProps) => {
   return (
@@ -41,7 +45,7 @@ export const HeaderSidebar = ({
 
       <aside
         className={clsx(
-          "absolute right-0 top-0 flex h-full w-full max-w-[320px] flex-col bg-white transition-transform duration-300 sm:max-w-[360px]",
+          "absolute right-0 top-0 flex h-full w-full max-w-[320px] flex-col bg-white shadow-[-12px_0_32px_rgba(38,38,38,0.12)] transition-transform duration-300 sm:max-w-[360px]",
           isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
@@ -74,7 +78,11 @@ export const HeaderSidebar = ({
           </nav>
 
           <div className="mt-6 flex items-center gap-3">
-            <HeaderAuthLinks placement="sidebar" onNavigate={onClose} />
+            {user ? (
+              <HeaderUser user={user} placement="sidebar" onNavigate={onClose} />
+            ) : (
+              <HeaderAuthLinks placement="sidebar" onNavigate={onClose} />
+            )}
           </div>
         </div>
       </aside>
