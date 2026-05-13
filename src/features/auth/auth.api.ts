@@ -23,6 +23,8 @@ export type AuthUser = {
   avatarUrl: string | null;
   role: string;
   likedAnimals?: unknown[];
+  applications?: unknown[];
+  adoptionApplications?: unknown[];
 };
 
 export type AuthResponse = {

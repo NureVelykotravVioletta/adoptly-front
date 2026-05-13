@@ -165,6 +165,39 @@ export async function getAnimal(id: string): Promise<Animal | null> {
   return FALLBACK_ANIMALS.find((animal) => animal.id === id) ?? null;
 }
 
+export async function getShelterAnimals({
+  shelterId,
+  shelterName,
+}: {
+  shelterId: string;
+  shelterName: string;
+}): Promise<Animal[]> {
+  const endpointCandidates = [
+    `/shelters/${encodeURIComponent(shelterId)}/animals`,
+    `/shelters/${encodeURIComponent(shelterId)}/pets`,
+  ];
+
+  for (const pathname of endpointCandidates) {
+    const page = await requestAnimalsPage(pathname, { page: 1, limit: 100 });
+
+    if (page) {
+      return page.items;
+    }
+  }
+
+  const animalsPage = await getAnimals({ page: 1, limit: 100 });
+  const normalizedShelterName = shelterName.trim().toLocaleLowerCase("uk-UA");
+
+  return animalsPage.items.filter((animal) => {
+    const matchesShelterId = animal.shelterId === shelterId;
+    const matchesShelterName =
+      animal.shelterName.trim().toLocaleLowerCase("uk-UA") ===
+      normalizedShelterName;
+
+    return matchesShelterId || matchesShelterName;
+  });
+}
+
 export async function getLikedAnimals(token: string): Promise<Animal[]> {
   const response = await fetch(createApiUrl("/users/me/liked-animals"), {
     method: "GET",

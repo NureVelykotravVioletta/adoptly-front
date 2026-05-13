@@ -30,7 +30,7 @@ export async function setAuthSession(response: AuthResponse) {
   cookieStore.set(
     AUTH_USER_COOKIE,
     serializeSessionUser(response.user),
-    sessionCookieOptions,
+    sessionCookieOptions
   );
 }
 
@@ -84,7 +84,7 @@ async function getSessionUser(): Promise<AuthUser | null> {
 
   try {
     const parsed = JSON.parse(
-      Buffer.from(cookieValue, "base64url").toString("utf8"),
+      Buffer.from(cookieValue, "base64url").toString("utf8")
     ) as Partial<AuthUser>;
 
     if (
@@ -101,9 +101,17 @@ async function getSessionUser(): Promise<AuthUser | null> {
       name: parsed.name,
       email: parsed.email,
       phone: typeof parsed.phone === "string" ? parsed.phone : null,
-      avatarUrl:
-        typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : null,
+      avatarUrl: typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : null,
       role: parsed.role,
+      likedAnimals: Array.isArray(parsed.likedAnimals)
+        ? parsed.likedAnimals
+        : undefined,
+      applications: Array.isArray(parsed.applications)
+        ? parsed.applications
+        : undefined,
+      adoptionApplications: Array.isArray(parsed.adoptionApplications)
+        ? parsed.adoptionApplications
+        : undefined,
     };
   } catch {
     return null;

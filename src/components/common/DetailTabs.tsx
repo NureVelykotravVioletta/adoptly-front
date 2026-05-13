@@ -1,14 +1,25 @@
+"use client";
+
+import clsx from "clsx";
+
 type DetailTabsProps<TTab extends string> = {
   tabs: readonly TTab[];
   activeTab: TTab;
+  onTabChange?: (tab: TTab) => void;
+  className?: string;
 };
 
 export function DetailTabs<TTab extends string>({
   tabs,
   activeTab,
+  onTabChange,
+  className,
 }: DetailTabsProps<TTab>) {
   return (
-    <div className="mb-7 flex flex-wrap justify-center gap-3">
+    <div
+      className={clsx("flex flex-wrap justify-center gap-3", className)}
+      role="tablist"
+    >
       {tabs.map((tab) => {
         const isActive = tab === activeTab;
 
@@ -16,7 +27,9 @@ export function DetailTabs<TTab extends string>({
           <button
             key={tab}
             type="button"
-            aria-pressed={isActive}
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onTabChange?.(tab)}
             className={
               isActive
                 ? "h-12 cursor-default rounded-full bg-[#8456F0] px-7 text-sm font-semibold text-white"

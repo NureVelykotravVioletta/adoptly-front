@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import clsx from "clsx";
+import { ProfileApplicationCard } from "@/src/components/profile/ProfileApplicationCard";
 import { ProfileFavoriteAnimalCard } from "@/src/components/profile/ProfileFavoriteAnimalCard";
+import type { AdoptionApplication } from "@/src/features/applications/applications.api";
 import type { Animal } from "@/src/features/animals/animals.api";
 
 const tabs = [
@@ -37,14 +39,20 @@ type ProfilePetsTab = (typeof tabs)[number]["id"];
 
 type ProfilePetsPanelProps = {
   likedAnimals: Animal[];
+  applications: AdoptionApplication[];
 };
 
-export function ProfilePetsPanel({ likedAnimals }: ProfilePetsPanelProps) {
+export function ProfilePetsPanel({
+  likedAnimals,
+  applications,
+}: ProfilePetsPanelProps) {
   const [activeTab, setActiveTab] = useState<ProfilePetsTab>("favorites");
   const [visibleLikedAnimals, setVisibleLikedAnimals] = useState(likedAnimals);
   const activeTabContent = tabs.find((tab) => tab.id === activeTab);
   const hasFavoriteAnimals =
     activeTab === "favorites" && visibleLikedAnimals.length > 0;
+  const hasApplications =
+    activeTab === "applications" && applications.length > 0;
 
   return (
     <div className="flex w-full min-h-130 flex-col lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-2">
@@ -90,6 +98,15 @@ export function ProfilePetsPanel({ likedAnimals }: ProfilePetsPanelProps) {
                   )
                 )
               }
+            />
+          ))}
+        </div>
+      ) : hasApplications ? (
+        <div className="mt-8 flex w-full flex-col items-center gap-4 lg:items-stretch">
+          {applications.map((application) => (
+            <ProfileApplicationCard
+              key={application.id}
+              application={application}
             />
           ))}
         </div>

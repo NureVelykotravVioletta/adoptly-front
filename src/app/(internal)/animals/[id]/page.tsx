@@ -2,6 +2,12 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/src/components/common/Breadcrumbs";
+import { AdoptionApplicationDialog } from "@/src/features/applications/AdoptionApplicationDialog";
+import { getUserApplications } from "@/src/features/applications/applications.api";
+import {
+  getLocalAdoptionApplications,
+  mergeApplications,
+} from "@/src/features/applications/applications.session";
 import { AnimalGallery } from "@/src/features/animals/AnimalGallery";
 import { LikeAnimalButton } from "@/src/features/animals/LikeAnimalButton";
 import {
@@ -43,6 +49,20 @@ export default async function AnimalDetailsPage({
     endpointLikedAnimals.length > 0 ? endpointLikedAnimals : userLikedAnimals;
   const isLiked = likedAnimals.some(
     (likedAnimal) => likedAnimal.id === animal.id
+  );
+  const endpointApplications =
+    token && currentUser
+      ? await getUserApplications(token, currentUser.id).catch(() => [])
+      : [];
+  const localApplications = currentUser
+    ? await getLocalAdoptionApplications(currentUser.id)
+    : [];
+  const applications = mergeApplications(
+    endpointApplications,
+    localApplications
+  );
+  const hasExistingApplication = applications.some(
+    (application) => application.animalId === animal.id
   );
 
   return (
@@ -96,7 +116,11 @@ export default async function AnimalDetailsPage({
           <section className="mb-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-2xl leading-8 font-bold text-[#262626]">
             <h2>Притулок:</h2>
             <Link
-              href={`/shelters?search=${encodeURIComponent(animal.shelterName)}`}
+              href={
+                animal.shelterId
+                  ? `/shelters/${encodeURIComponent(animal.shelterId)}`
+                  : `/shelters?search=${encodeURIComponent(animal.shelterName)}`
+              }
               className="text-[#8456F0] underline decoration-[#8456F0]/30 underline-offset-4 transition hover:text-[#7045D1]"
             >
               {animal.shelterName}
@@ -111,12 +135,11 @@ export default async function AnimalDetailsPage({
           </section>
 
           <div className="flex justify-center">
-            <button
-              type="button"
-              className="w-full max-w-60 cursor-pointer rounded-full bg-[#8456F0] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#7045D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
-            >
-              Подати заявку
-            </button>
+            <AdoptionApplicationDialog
+              animalId={animal.id}
+              animalName={animal.name}
+              disabled={hasExistingApplication}
+            />
           </div>
         </article>
       </div>
