@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import { uploadAvatarAction } from "@/src/features/auth/auth.action";
 import UserIcon from "@/src/assets/icons/UserIcon.svg";
 
@@ -64,7 +65,9 @@ export function ProfileAvatarUpload({ avatarUrl }: ProfileAvatarUploadProps) {
     <div className="-mt-2 flex flex-col items-center">
       <span
         className="flex h-26 w-26 items-center justify-center overflow-hidden rounded-full bg-[#DACAFF] bg-cover bg-center"
-        style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+        style={
+          previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined
+        }
         aria-hidden
       >
         {previewUrl ? null : (
@@ -90,7 +93,11 @@ export function ProfileAvatarUpload({ avatarUrl }: ProfileAvatarUploadProps) {
         {isPending ? "Завантаження..." : "Завантажити фото"}
       </button>
 
-      {error ? <p className="mt-2 text-center text-sm text-rose-600">{error}</p> : null}
+      {isPending ? <LoadingOverlay label="Завантаження фото" /> : null}
+
+      {error ? (
+        <p className="mt-2 text-center text-sm text-rose-600">{error}</p>
+      ) : null}
     </div>
   );
 }

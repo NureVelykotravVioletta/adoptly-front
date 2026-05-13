@@ -2,9 +2,11 @@
 
 import type { ReactNode } from "react";
 import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
+import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import { loginAction } from "@/src/features/auth/login/login.action";
 import { useLoginViewModel } from "@/src/features/auth/login/login.viewmodel";
 import EyeOffIcon from "@/src/assets/icons/EyeOffIcon.svg";
@@ -19,13 +21,19 @@ import {
 } from "@/src/features/auth/login/login.types";
 
 function SubmitButton() {
+  const { pending } = useFormStatus();
+
   return (
-    <button
-      type="submit"
-      className="w-full rounded-[999px] bg-[#8456F0] px-6 py-4 text-base font-semibold text-white transition hover:bg-[#7045D1]"
-    >
-      Вхід
-    </button>
+    <>
+      <button
+        type="submit"
+        disabled={pending}
+        className="w-full rounded-[999px] bg-[#8456F0] px-6 py-4 text-base font-semibold text-white transition hover:bg-[#7045D1] disabled:cursor-wait disabled:bg-[#DACAFF] disabled:text-[#8456F0]"
+      >
+        {pending ? "Вхід..." : "Вхід"}
+      </button>
+      {pending ? <LoadingOverlay label="Вхід в акаунт" /> : null}
+    </>
   );
 }
 
@@ -68,7 +76,7 @@ function Field({
             trailingIcon ? "pr-14" : "",
             error
               ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
-              : "border-[rgba(38,38,38,0.15)] focus:border-[#8456F0] focus:ring-[rgba(132,86,240,0.14)]",
+              : "border-[rgba(38,38,38,0.15)] focus:border-[#8456F0] focus:ring-[rgba(132,86,240,0.14)]"
           )}
         />
         {trailingIcon ? (
@@ -89,7 +97,7 @@ function Field({
 export function LoginForm() {
   const [actionState, formAction] = useActionState(
     loginAction,
-    initialLoginActionState,
+    initialLoginActionState
   );
   const [showPassword, setShowPassword] = useState(false);
   const { displayedErrors, handleSubmit, getInputProps } =
@@ -162,7 +170,9 @@ export function LoginForm() {
                 <button
                   type="button"
                   className="flex h-[22px] w-[22px] items-center justify-center text-[#8456F0]"
-                  aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
+                  aria-label={
+                    showPassword ? "Приховати пароль" : "Показати пароль"
+                  }
                   onClick={() => setShowPassword((current) => !current)}
                 >
                   {showPassword ? (
@@ -174,7 +184,7 @@ export function LoginForm() {
               }
               inputProps={getInputProps(
                 "password",
-                showPassword ? "text" : "password",
+                showPassword ? "text" : "password"
               )}
             />
 

@@ -47,7 +47,9 @@ export const Header = ({ variant = "default", user = null }: HeaderProps) => {
             <Logo
               className={clsx(
                 "h-7 w-auto sm:h-8",
-                isHome ? "text-white" : "text-[#8456F0]",
+                isHome
+                  ? "text-white [--logo-text-color:currentColor]"
+                  : "text-[#8456F0] [--logo-text-color:#262626]",
               )}
             />
           </Link>

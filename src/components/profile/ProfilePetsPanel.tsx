@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import clsx from "clsx";
+import { ProfileFavoriteAnimalCard } from "@/src/components/profile/ProfileFavoriteAnimalCard";
+import type { Animal } from "@/src/features/animals/animals.api";
 
 const tabs = [
   {
@@ -24,9 +26,7 @@ const tabs = [
     emptyText: (
       <>
         Ой,{" "}
-        <span className="text-[#8456F0]">
-          схоже, ви ще не подавали заявки.
-        </span>{" "}
+        <span className="text-[#8456F0]">схоже, ви ще не подавали заявки.</span>{" "}
         Коли ви подасте заявку на адопцію, вона зʼявиться тут.
       </>
     ),
@@ -35,13 +35,24 @@ const tabs = [
 
 type ProfilePetsTab = (typeof tabs)[number]["id"];
 
-export function ProfilePetsPanel() {
+type ProfilePetsPanelProps = {
+  likedAnimals: Animal[];
+};
+
+export function ProfilePetsPanel({ likedAnimals }: ProfilePetsPanelProps) {
   const [activeTab, setActiveTab] = useState<ProfilePetsTab>("favorites");
+  const [visibleLikedAnimals, setVisibleLikedAnimals] = useState(likedAnimals);
   const activeTabContent = tabs.find((tab) => tab.id === activeTab);
+  const hasFavoriteAnimals =
+    activeTab === "favorites" && visibleLikedAnimals.length > 0;
 
   return (
-    <div className="flex min-h-130 flex-col">
-      <div className="flex gap-2" role="tablist" aria-label="Списки профілю">
+    <div className="flex w-full min-h-130 flex-col lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-2">
+      <div
+        className="sticky top-0 z-10 flex justify-center gap-2 bg-[#F7F7F7] py-4 lg:justify-start"
+        role="tablist"
+        aria-label="Списки профілю"
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
 
@@ -57,7 +68,7 @@ export function ProfilePetsPanel() {
                 isActive
                   ? "bg-[#8456F0] text-white hover:bg-[#7045D1]"
                   : "bg-white text-[#262626] hover:bg-[#DACAFF] hover:text-[#8456F0]",
-                tab.id === "applications" && "px-10",
+                tab.id === "applications" && "px-10"
               )}
             >
               {tab.label}
@@ -66,11 +77,29 @@ export function ProfilePetsPanel() {
         })}
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-4 text-center">
-        <p className="max-w-115 text-base leading-6 text-[#262626]">
-          {activeTabContent?.emptyText}
-        </p>
-      </div>
+      {hasFavoriteAnimals ? (
+        <div className="mt-8 grid grid-cols-[repeat(auto-fit,minmax(min(100%,320px),320px))] justify-center gap-8 lg:justify-start">
+          {visibleLikedAnimals.map((animal) => (
+            <ProfileFavoriteAnimalCard
+              key={animal.id}
+              animal={animal}
+              onUnliked={(animalId) =>
+                setVisibleLikedAnimals((currentAnimals) =>
+                  currentAnimals.filter(
+                    (currentAnimal) => currentAnimal.id !== animalId
+                  )
+                )
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-1 items-center justify-center px-4 text-center">
+          <p className="max-w-115 text-base leading-6 text-[#262626]">
+            {activeTabContent?.emptyText}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

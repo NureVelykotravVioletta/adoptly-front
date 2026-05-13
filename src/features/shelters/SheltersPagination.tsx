@@ -1,23 +1,25 @@
 import { Pagination } from "@/src/components/common/Pagination";
 
-type ArticlesPaginationProps = {
+type SheltersPaginationProps = {
   currentPage: number;
   totalPages: number;
   search?: string;
+  city?: string;
 };
 
-export function ArticlesPagination({
+export function SheltersPagination({
   currentPage,
   totalPages,
   search,
-}: ArticlesPaginationProps) {
+  city,
+}: SheltersPaginationProps) {
   return (
     <Pagination
       currentPage={currentPage}
       totalPages={totalPages}
-      basePath="/articles"
-      query={{ search }}
-      ariaLabel="Пагінація статей"
+      basePath="/shelters"
+      query={{ search, city }}
+      ariaLabel="Пагінація притулків"
     />
   );
 }

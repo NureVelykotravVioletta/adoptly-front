@@ -22,6 +22,7 @@ export type AuthUser = {
   phone: string | null;
   avatarUrl: string | null;
   role: string;
+  likedAnimals?: unknown[];
 };
 
 export type AuthResponse = {
@@ -33,7 +34,7 @@ export type AuthResponse = {
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly status: number,
+    public readonly status: number
   ) {
     super(message);
     this.name = "ApiError";
@@ -72,7 +73,7 @@ export async function register(payload: RegisterPayload) {
   if (!response.ok) {
     throw new ApiError(
       data?.message ?? "Не вдалося завершити реєстрацію",
-      response.status,
+      response.status
     );
   }
 
@@ -97,7 +98,7 @@ export async function login(payload: LoginPayload) {
   if (!response.ok) {
     throw new ApiError(
       data?.message ?? "Не вдалося виконати вхід",
-      response.status,
+      response.status
     );
   }
 
@@ -105,7 +106,30 @@ export async function login(payload: LoginPayload) {
 }
 
 export async function getMe(token: string) {
-  const response = await fetch(createApiUrl("/auth/me"), {
+  const requests = ["/users/me", "/auth/me"];
+  let lastRouteError: ApiError | null = null;
+
+  for (const pathname of requests) {
+    try {
+      return await requestMe(token, pathname);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        lastRouteError = error;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw (
+    lastRouteError ??
+    new ApiError("Не знайдено endpoint для отримання користувача.", 404)
+  );
+}
+
+async function requestMe(token: string, pathname: string) {
+  const response = await fetch(createApiUrl(pathname), {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -123,7 +147,7 @@ export async function getMe(token: string) {
       data && "message" in data && data.message
         ? data.message
         : "Не вдалося отримати дані користувача",
-      response.status,
+      response.status
     );
   }
 
@@ -136,7 +160,7 @@ export async function getMe(token: string) {
 
 export async function updateProfile(
   token: string,
-  payload: UpdateProfilePayload,
+  payload: UpdateProfilePayload
 ) {
   const requests = [
     { method: "PATCH", pathname: "/users/me" },
@@ -168,7 +192,7 @@ export async function updateProfile(
 async function requestUpdateProfile(
   token: string,
   payload: UpdateProfilePayload,
-  request: { method: string; pathname: string },
+  request: { method: string; pathname: string }
 ) {
   const response = await fetch(createApiUrl(request.pathname), {
     method: request.method,
@@ -191,7 +215,7 @@ async function requestUpdateProfile(
       data,
       responseText,
       response.status,
-      "Не вдалося зберегти зміни.",
+      "Не вдалося зберегти зміни."
     );
 
     throw new ApiError(errorMessage, response.status);
@@ -229,9 +253,9 @@ export async function uploadAvatar(token: string, file: File) {
         data,
         responseText,
         response.status,
-        "Не вдалося завантажити фото.",
+        "Не вдалося завантажити фото."
       ),
-      response.status,
+      response.status
     );
   }
 
@@ -258,12 +282,10 @@ function getApiErrorMessage(
   data: unknown,
   responseText: string,
   status: number,
-  fallbackMessage: string,
+  fallbackMessage: string
 ) {
   const message =
-    data && typeof data === "object" && "message" in data
-      ? data.message
-      : null;
+    data && typeof data === "object" && "message" in data ? data.message : null;
 
   if (typeof message === "string" && message.length > 0) {
     return message;
@@ -294,6 +316,9 @@ function isRouteNotFoundError(error: ApiError) {
     (error.message.includes("Cannot PATCH") ||
       error.message.includes("Cannot PUT") ||
       error.message.includes("Cannot POST") ||
-      error.message.includes("Не вдалося зберегти зміни. Статус відповіді: 404."))
+      error.message.includes("Cannot GET") ||
+      error.message.includes(
+        "Не вдалося зберегти зміни. Статус відповіді: 404."
+      ))
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import clsx from "clsx";
 import Image from "next/image";
 import Link from "next/link";
+import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import { registerAction } from "@/src/features/auth/register/register.action";
 import { useRegisterViewModel } from "@/src/features/auth/register/register.viewmodel";
 import CrossIcon from "@/src/assets/icons/CrossIcon.svg";
@@ -18,13 +20,19 @@ import RegistrationImageMobile from "@/src/assets/images/RegistrationImageMobile
 import RegistrationImageTablet from "@/src/assets/images/RegistrationImageTablet.png";
 
 function SubmitButton() {
+  const { pending } = useFormStatus();
+
   return (
-    <button
-      type="submit"
-      className="w-full rounded-[999px] bg-[#8456F0] px-6 py-4 text-base font-semibold text-white transition hover:bg-[#7045D1]"
-    >
-      Зареєструватися
-    </button>
+    <>
+      <button
+        type="submit"
+        disabled={pending}
+        className="w-full rounded-[999px] bg-[#8456F0] px-6 py-4 text-base font-semibold text-white transition hover:bg-[#7045D1] disabled:cursor-wait disabled:bg-[#DACAFF] disabled:text-[#8456F0]"
+      >
+        {pending ? "Реєстрація..." : "Зареєструватися"}
+      </button>
+      {pending ? <LoadingOverlay label="Реєстрація акаунта" /> : null}
+    </>
   );
 }
 
@@ -69,7 +77,7 @@ function Field({
             trailingIcon ? "pr-14" : "",
             error
               ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
-              : "border-[rgba(38,38,38,0.15)] focus:border-[#8456F0] focus:ring-[rgba(132,86,240,0.14)]",
+              : "border-[rgba(38,38,38,0.15)] focus:border-[#8456F0] focus:ring-[rgba(132,86,240,0.14)]"
           )}
         />
         {trailingIcon ? (
@@ -90,7 +98,7 @@ function Field({
 export function RegisterForm() {
   const [actionState, formAction] = useActionState(
     registerAction,
-    initialRegisterActionState,
+    initialRegisterActionState
   );
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -182,7 +190,9 @@ export function RegisterForm() {
                 <button
                   type="button"
                   className="pointer-events-auto flex h-[22px] w-[22px] items-center justify-center text-[#8456F0]"
-                  aria-label={showPassword ? "Приховати пароль" : "Показати пароль"}
+                  aria-label={
+                    showPassword ? "Приховати пароль" : "Показати пароль"
+                  }
                   onClick={() => setShowPassword((current) => !current)}
                 >
                   {getPasswordIcon(showPassword)}
@@ -190,7 +200,7 @@ export function RegisterForm() {
               }
               inputProps={getInputProps(
                 "password",
-                showPassword ? "text" : "password",
+                showPassword ? "text" : "password"
               )}
             />
 
@@ -209,16 +219,14 @@ export function RegisterForm() {
                       ? "Приховати підтвердження пароля"
                       : "Показати підтвердження пароля"
                   }
-                  onClick={() =>
-                    setShowConfirmPassword((current) => !current)
-                  }
+                  onClick={() => setShowConfirmPassword((current) => !current)}
                 >
                   {getPasswordIcon(showConfirmPassword)}
                 </button>
               }
               inputProps={getInputProps(
                 "confirmPassword",
-                showConfirmPassword ? "text" : "password",
+                showConfirmPassword ? "text" : "password"
               )}
             />
 

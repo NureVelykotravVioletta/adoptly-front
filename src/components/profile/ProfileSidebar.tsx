@@ -12,7 +12,7 @@ type ProfileSidebarProps = {
 
 export function ProfileSidebar({ user }: ProfileSidebarProps) {
   return (
-    <aside className="rounded-[48px] bg-white px-9 pt-10 pb-9 text-[#262626] shadow-[0_20px_80px_rgba(38,38,38,0.04)]">
+    <aside className="w-full max-w-130 min-w-0 rounded-[48px] bg-white px-9 pt-10 pb-9 text-[#262626] shadow-[0_20px_80px_rgba(38,38,38,0.04)]">
       <div className="flex items-start justify-between">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#8456F0] px-4 py-2 text-sm font-medium text-white">
           {user.role}

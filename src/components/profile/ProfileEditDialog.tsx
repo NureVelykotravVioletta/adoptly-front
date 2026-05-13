@@ -14,6 +14,7 @@ import {
   updateProfileAction,
   uploadAvatarAction,
 } from "@/src/features/auth/auth.action";
+import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import type { AuthUser } from "@/src/features/auth/auth.api";
 import CloseIcon from "@/src/assets/icons/CloseIcon.svg";
 import EditIcon from "@/src/assets/icons/EditIcon.svg";
@@ -44,7 +45,7 @@ export function ProfileEditDialog({ user }: ProfileEditDialogProps) {
       email: user.email,
       phone: user.phone ?? "",
     }),
-    [user.email, user.name, user.phone],
+    [user.email, user.name, user.phone]
   );
   const [isOpen, setIsOpen] = useState(false);
   const [values, setValues] = useState<ProfileEditValues>(initialValues);
@@ -237,90 +238,98 @@ export function ProfileEditDialog({ user }: ProfileEditDialogProps) {
                   Редагувати інформацію
                 </h2>
 
-            <div className="mt-7 flex justify-center">
-              <span
-                className="flex h-22 w-22 items-center justify-center overflow-hidden rounded-full bg-[#DACAFF] bg-cover bg-center"
-                style={
-                  previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined
-                }
-                aria-hidden
-              >
-                {previewUrl ? null : (
-                  <UserIcon className="block h-10 w-10 text-[#8456F0]" />
-                )}
-              </span>
-            </div>
+                <div className="mt-7 flex justify-center">
+                  <span
+                    className="flex h-22 w-22 items-center justify-center overflow-hidden rounded-full bg-[#DACAFF] bg-cover bg-center"
+                    style={
+                      previewUrl
+                        ? { backgroundImage: `url(${previewUrl})` }
+                        : undefined
+                    }
+                    aria-hidden
+                  >
+                    {previewUrl ? null : (
+                      <UserIcon className="block h-10 w-10 text-[#8456F0]" />
+                    )}
+                  </span>
+                </div>
 
-            <div className="mt-6 flex justify-center">
-              <button
-                type="button"
-                onClick={handleSelectImage}
-                className="h-12 cursor-pointer rounded-full bg-[#DACAFF] px-7 text-base font-medium text-[#262626] transition hover:bg-[#c7adff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
-              >
-                Завантажити фото
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                name="image"
-                accept="image/*"
-                className="sr-only"
-                onChange={handleImageChange}
-              />
-            </div>
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={handleSelectImage}
+                    className="h-12 cursor-pointer rounded-full bg-[#DACAFF] px-7 text-base font-medium text-[#262626] transition hover:bg-[#c7adff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
+                  >
+                    Завантажити фото
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleImageChange}
+                  />
+                </div>
 
-            <div className="mt-5 space-y-4">
-              <ProfileEditInput
-                name="name"
-                value={values.name}
-                placeholder="Імʼя"
-                ariaLabel="Імʼя"
-                autoComplete="name"
-                error={touchedFields.name ? fieldErrors.name : undefined}
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
-              <ProfileEditInput
-                name="email"
-                type="email"
-                value={values.email}
-                placeholder="name@gmail.com"
-                ariaLabel="Електронна пошта"
-                autoComplete="email"
-                error={touchedFields.email ? fieldErrors.email : undefined}
-                required
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
-              <ProfileEditInput
-                name="phone"
-                type="tel"
-                value={values.phone}
-                placeholder="+380"
-                ariaLabel="Номер телефону"
-                autoComplete="tel"
-                inputMode="tel"
-                pattern="^\+?[0-9\s()\-]{7,20}$"
-                title="Введіть коректний номер телефону"
-                error={touchedFields.phone ? fieldErrors.phone : undefined}
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
-            </div>
+                <div className="mt-5 space-y-4">
+                  <ProfileEditInput
+                    name="name"
+                    value={values.name}
+                    placeholder="Імʼя"
+                    ariaLabel="Імʼя"
+                    autoComplete="name"
+                    error={touchedFields.name ? fieldErrors.name : undefined}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <ProfileEditInput
+                    name="email"
+                    type="email"
+                    value={values.email}
+                    placeholder="name@gmail.com"
+                    ariaLabel="Електронна пошта"
+                    autoComplete="email"
+                    error={touchedFields.email ? fieldErrors.email : undefined}
+                    required
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <ProfileEditInput
+                    name="phone"
+                    type="tel"
+                    value={values.phone}
+                    placeholder="+380"
+                    ariaLabel="Номер телефону"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    pattern="^\+?[0-9\s()\-]{7,20}$"
+                    title="Введіть коректний номер телефону"
+                    error={touchedFields.phone ? fieldErrors.phone : undefined}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                </div>
 
-            {error ? <p className="mt-4 text-sm text-rose-600">{error}</p> : null}
+                {error ? (
+                  <p className="mt-4 text-sm text-rose-600">{error}</p>
+                ) : null}
 
-            <button
-              type="submit"
-              disabled={!hasChanges || hasFieldErrors || isPending}
-              className="mt-8 h-15 w-full cursor-pointer rounded-full bg-[#8456F0] text-lg font-semibold text-white transition hover:bg-[#7045D1] disabled:cursor-not-allowed disabled:bg-[#DACAFF] disabled:text-[#8456F0] disabled:opacity-60"
-            >
-              {isPending ? "Збереження..." : "Зберегти"}
-            </button>
-          </form>
-        </div>,
-          document.body,
-        )
+                <button
+                  type="submit"
+                  disabled={!hasChanges || hasFieldErrors || isPending}
+                  className="mt-8 h-15 w-full cursor-pointer rounded-full bg-[#8456F0] text-lg font-semibold text-white transition hover:bg-[#7045D1] disabled:cursor-not-allowed disabled:bg-[#DACAFF] disabled:text-[#8456F0] disabled:opacity-60"
+                >
+                  {isPending ? "Збереження..." : "Зберегти"}
+                </button>
+
+                {isPending ? (
+                  <LoadingOverlay label="Збереження профілю" />
+                ) : null}
+              </form>
+            </div>,
+            document.body
+          )
         : null}
     </>
   );
@@ -390,15 +399,15 @@ function ProfileEditInput({
 
 function getChangedValues(
   initialValues: ProfileEditValues,
-  values: ProfileEditValues,
+  values: ProfileEditValues
 ) {
   return Object.fromEntries(
     Object.entries(values)
       .map(([field, value]) => [field, value.trim()])
       .filter(
         ([field, value]) =>
-          value !== initialValues[field as keyof ProfileEditValues],
-      ),
+          value !== initialValues[field as keyof ProfileEditValues]
+      )
   ) as Partial<ProfileEditValues>;
 }
 

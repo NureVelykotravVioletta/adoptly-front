@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, useFormStatus } from "react-dom";
 import Image from "next/image";
+import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import { logoutAction } from "@/src/features/auth/auth.action";
 import CloseIcon from "@/src/assets/icons/CloseIcon.svg";
 import catImage from "@/src/assets/images/Cat.png";
@@ -91,18 +92,16 @@ export function LogoutConfirmDialog({
                   />
                 </div>
 
-                <h2 id="logout-confirm-title" className="mt-5 text-xl font-bold">
+                <h2
+                  id="logout-confirm-title"
+                  className="mt-5 text-xl font-bold"
+                >
                   Хочете вийти з акаунту?
                 </h2>
 
                 <div className="mt-6 grid grid-cols-2 gap-2">
                   <form action={logoutAction}>
-                    <button
-                      type="submit"
-                      className="h-12 w-full cursor-pointer rounded-full bg-[#8456F0] text-sm font-semibold text-white transition hover:bg-[#7045D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
-                    >
-                      Так
-                    </button>
+                    <LogoutSubmitButton />
                   </form>
                   <button
                     type="button"
@@ -114,9 +113,26 @@ export function LogoutConfirmDialog({
                 </div>
               </div>
             </div>,
-            document.body,
+            document.body
           )
         : null}
+    </>
+  );
+}
+
+function LogoutSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <>
+      <button
+        type="submit"
+        disabled={pending}
+        className="h-12 w-full cursor-pointer rounded-full bg-[#8456F0] text-sm font-semibold text-white transition hover:bg-[#7045D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0] disabled:cursor-wait disabled:bg-[#DACAFF] disabled:text-[#8456F0]"
+      >
+        {pending ? "Вихід..." : "Так"}
+      </button>
+      {pending ? <LoadingOverlay label="Вихід з акаунта" /> : null}
     </>
   );
 }
