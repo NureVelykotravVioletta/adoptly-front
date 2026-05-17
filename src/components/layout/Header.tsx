@@ -6,13 +6,20 @@ import { HeaderAuthLinks } from "@/src/components/layout/HeaderAuthLinks";
 import { HeaderSidebar } from "@/src/components/layout/HeaderSidebar";
 import { HeaderUser } from "@/src/components/layout/HeaderUser";
 import type { AuthUser } from "@/src/features/auth/auth.api";
+import { isAdminUser } from "@/src/features/auth/auth.roles";
 import Logo from "../../assets/icons/Logo.svg";
 import MenuIcon from "../../assets/icons/MenuIcon.svg";
 
-const navItems = [
+const userNavItems = [
   { href: "/articles", label: "Поради" },
   { href: "/animals", label: "Знайти улюбленця" },
   { href: "/shelters", label: "Притулки" },
+];
+
+const adminNavItems = [
+  { href: "/shelters", label: "Притулки" },
+  { href: "/animals", label: "Тварини" },
+  { href: "/applications", label: "Заявки" },
 ];
 
 type HeaderProps = {
@@ -22,6 +29,7 @@ type HeaderProps = {
 
 export const Header = ({ variant = "default", user = null }: HeaderProps) => {
   const isHome = variant === "home";
+  const navItems = isAdminUser(user) ? adminNavItems : userNavItems;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {

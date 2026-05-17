@@ -61,6 +61,7 @@ export default async function AnimalDetailsPage({
     endpointApplications,
     localApplications
   );
+  const isAuthenticated = Boolean(token && currentUser);
   const hasExistingApplication = applications.some(
     (application) => application.animalId === animal.id
   );
@@ -95,6 +96,7 @@ export default async function AnimalDetailsPage({
               animalId={animal.id}
               animalName={animal.name}
               initialLiked={isLiked}
+              isAuthenticated={isAuthenticated}
               variant="details"
             />
           </div>
@@ -138,6 +140,7 @@ export default async function AnimalDetailsPage({
             <AdoptionApplicationDialog
               animalId={animal.id}
               animalName={animal.name}
+              isAuthenticated={isAuthenticated}
               disabled={hasExistingApplication}
             />
           </div>

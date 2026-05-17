@@ -4,11 +4,13 @@ import type { Animal } from "@/src/features/animals/animals.api";
 type AnimalsListProps = {
   animals: Animal[];
   likedAnimalIds?: string[];
+  isAuthenticated: boolean;
 };
 
 export function AnimalsList({
   animals,
   likedAnimalIds = [],
+  isAuthenticated,
 }: AnimalsListProps) {
   const likedAnimalIdsSet = new Set(likedAnimalIds);
 
@@ -19,6 +21,7 @@ export function AnimalsList({
           key={animal.id}
           animal={animal}
           isLiked={likedAnimalIdsSet.has(animal.id)}
+          isAuthenticated={isAuthenticated}
         />
       ))}
     </div>

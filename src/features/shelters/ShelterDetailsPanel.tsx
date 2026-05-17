@@ -16,12 +16,14 @@ type ShelterDetailsPanelProps = {
   shelter: Shelter;
   animals: Animal[];
   likedAnimalIds?: string[];
+  isAuthenticated: boolean;
 };
 
 export function ShelterDetailsPanel({
   shelter,
   animals,
   likedAnimalIds = [],
+  isAuthenticated,
 }: ShelterDetailsPanelProps) {
   const [activeTab, setActiveTab] = useState<ShelterDetailsTab>("Допомога");
   const likedAnimalIdsSet = new Set(likedAnimalIds);
@@ -45,6 +47,7 @@ export function ShelterDetailsPanel({
                 key={animal.id}
                 animal={animal}
                 isLiked={likedAnimalIdsSet.has(animal.id)}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>

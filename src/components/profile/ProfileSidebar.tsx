@@ -1,6 +1,7 @@
 import { LogoutConfirmDialog } from "@/src/components/auth/LogoutConfirmDialog";
 import type { AuthUser } from "@/src/features/auth/auth.api";
-import { ProfileAdoptedPetsHeader } from "@/src/components/profile/ProfileAdoptedPetsHeader";
+import type { Animal } from "@/src/features/animals/animals.api";
+import { ProfileAdoptedPetsSection } from "@/src/components/profile/ProfileAdoptedPetsSection";
 import { ProfileAvatarUpload } from "@/src/components/profile/ProfileAvatarUpload";
 import { ProfileEditDialog } from "@/src/components/profile/ProfileEditDialog";
 import { ProfileInfoForm } from "@/src/components/profile/ProfileInfoForm";
@@ -8,9 +9,15 @@ import UserIcon from "@/src/assets/icons/UserIcon.svg";
 
 type ProfileSidebarProps = {
   user: AuthUser;
+  adoptedAnimals?: Animal[];
+  showAdoptedAnimals?: boolean;
 };
 
-export function ProfileSidebar({ user }: ProfileSidebarProps) {
+export function ProfileSidebar({
+  user,
+  adoptedAnimals = [],
+  showAdoptedAnimals = true,
+}: ProfileSidebarProps) {
   return (
     <aside className="w-full max-w-130 min-w-0 rounded-[48px] bg-white px-9 pt-10 pb-9 text-[#262626] shadow-[0_20px_80px_rgba(38,38,38,0.04)]">
       <div className="flex items-start justify-between">
@@ -30,7 +37,9 @@ export function ProfileSidebar({ user }: ProfileSidebarProps) {
         <ProfileInfoForm user={user} />
       </div>
 
-      <ProfileAdoptedPetsHeader />
+      {showAdoptedAnimals ? (
+        <ProfileAdoptedPetsSection animals={adoptedAnimals} />
+      ) : null}
 
       <LogoutConfirmDialog
         triggerWrapperClassName="mt-20"

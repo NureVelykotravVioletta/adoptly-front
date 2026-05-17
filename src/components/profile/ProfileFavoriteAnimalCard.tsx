@@ -53,6 +53,7 @@ export function ProfileFavoriteAnimalCard({
           animalId={animal.id}
           animalName={animal.name}
           initialLiked
+          isAuthenticated
           variant="profile"
           onUnliked={onUnliked}
         />

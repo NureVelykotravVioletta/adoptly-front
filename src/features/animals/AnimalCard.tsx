@@ -5,9 +5,14 @@ import type { Animal } from "@/src/features/animals/animals.api";
 type AnimalCardProps = {
   animal: Animal;
   isLiked?: boolean;
+  isAuthenticated: boolean;
 };
 
-export function AnimalCard({ animal, isLiked = false }: AnimalCardProps) {
+export function AnimalCard({
+  animal,
+  isLiked = false,
+  isAuthenticated,
+}: AnimalCardProps) {
   return (
     <article className="flex min-w-0 flex-col rounded-lg bg-white p-6 shadow-[0_8px_24px_rgba(38,38,38,0.04)]">
       <div className="mb-5 aspect-[1.78] overflow-hidden rounded-lg bg-[#D9D9D9]">
@@ -56,6 +61,7 @@ export function AnimalCard({ animal, isLiked = false }: AnimalCardProps) {
             animalId={animal.id}
             animalName={animal.name}
             initialLiked={isLiked}
+            isAuthenticated={isAuthenticated}
           />
         </div>
       </div>

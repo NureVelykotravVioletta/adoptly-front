@@ -48,6 +48,7 @@ export default async function AnimalsPage({ searchParams }: AnimalsPageProps) {
   const likedAnimals =
     endpointLikedAnimals.length > 0 ? endpointLikedAnimals : userLikedAnimals;
   const likedAnimalIds = likedAnimals.map((animal) => animal.id);
+  const isAuthenticated = Boolean(token && currentUser);
 
   return (
     <div className="pb-8">
@@ -68,6 +69,7 @@ export default async function AnimalsPage({ searchParams }: AnimalsPageProps) {
         <AnimalsList
           animals={animalsPage.items}
           likedAnimalIds={likedAnimalIds}
+          isAuthenticated={isAuthenticated}
         />
       ) : (
         <div className="flex min-h-80 items-center justify-center text-center text-base text-[#8E8E8E]">

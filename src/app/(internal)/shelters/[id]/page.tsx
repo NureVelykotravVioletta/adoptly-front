@@ -44,6 +44,7 @@ export default async function ShelterDetailsPage({
   const likedAnimals =
     endpointLikedAnimals.length > 0 ? endpointLikedAnimals : userLikedAnimals;
   const likedAnimalIds = likedAnimals.map((animal) => animal.id);
+  const isAuthenticated = Boolean(token && currentUser);
 
   return (
     <div className="pb-10">
@@ -61,6 +62,7 @@ export default async function ShelterDetailsPage({
           shelter={shelter}
           animals={shelterAnimals}
           likedAnimalIds={likedAnimalIds}
+          isAuthenticated={isAuthenticated}
         />
       </div>
     </div>

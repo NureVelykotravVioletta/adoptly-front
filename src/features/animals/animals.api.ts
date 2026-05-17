@@ -221,6 +221,48 @@ export async function getLikedAnimals(token: string): Promise<Animal[]> {
   return normalizeLikedAnimalsData(data);
 }
 
+export async function deleteAnimal(token: string, animalId: string) {
+  const endpointCandidates = [
+    `/animals/${encodeURIComponent(animalId)}`,
+    `/pets/${encodeURIComponent(animalId)}`,
+  ];
+  let lastError: ApiError | null = null;
+
+  for (const pathname of endpointCandidates) {
+    const response = await fetch(createApiUrl(pathname), {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      return;
+    }
+
+    const data = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const message = Array.isArray(data?.message)
+      ? data.message.join(" ")
+      : data?.message;
+    const error = new ApiError(
+      message ?? "Не вдалося видалити тварину.",
+      response.status
+    );
+
+    if (response.status === 404) {
+      lastError = error;
+      continue;
+    }
+
+    throw error;
+  }
+
+  throw lastError ?? new ApiError("Не знайдено endpoint для видалення.", 404);
+}
+
 export async function setLikedAnimal(
   token: string,
   animalId: string,

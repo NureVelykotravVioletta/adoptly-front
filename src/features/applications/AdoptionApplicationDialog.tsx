@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { AuthRequiredDialog } from "@/src/components/auth/AuthRequiredDialog";
 import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import { submitAdoptionApplicationAction } from "@/src/features/applications/adoption-applications.action";
 import CloseIcon from "@/src/assets/icons/CloseIcon.svg";
@@ -10,16 +11,19 @@ import CloseIcon from "@/src/assets/icons/CloseIcon.svg";
 type AdoptionApplicationDialogProps = {
   animalId: string;
   animalName: string;
+  isAuthenticated: boolean;
   disabled?: boolean;
 };
 
 export function AdoptionApplicationDialog({
   animalId,
   animalName,
+  isAuthenticated,
   disabled = false,
 }: AdoptionApplicationDialogProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -54,6 +58,11 @@ export function AdoptionApplicationDialog({
 
   const openDialog = () => {
     if (disabled) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setIsAuthDialogOpen(true);
       return;
     }
 
@@ -171,6 +180,13 @@ export function AdoptionApplicationDialog({
             document.body
           )
         : null}
+
+      <AuthRequiredDialog
+        isOpen={isAuthDialogOpen}
+        onClose={() => setIsAuthDialogOpen(false)}
+        title="Зареєструйтеся, щоб подати заявку"
+        description={`Створіть акаунт або увійдіть, щоб подати заявку на адопцію тварини ${animalName}.`}
+      />
     </>
   );
 }

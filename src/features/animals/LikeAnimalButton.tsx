@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { AuthRequiredDialog } from "@/src/components/auth/AuthRequiredDialog";
 import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
 import { toggleLikedAnimalAction } from "@/src/features/animals/liked-animals.action";
 
@@ -10,6 +11,7 @@ type LikeAnimalButtonProps = {
   animalId: string;
   animalName: string;
   initialLiked: boolean;
+  isAuthenticated: boolean;
   variant?: "card" | "details" | "profile";
   onUnliked?: (animalId: string) => void;
 };
@@ -18,15 +20,22 @@ export function LikeAnimalButton({
   animalId,
   animalName,
   initialLiked,
+  isAuthenticated,
   variant = "card",
   onUnliked,
 }: LikeAnimalButtonProps) {
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [error, setError] = useState("");
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   function handleToggle() {
+    if (!isAuthenticated) {
+      setIsAuthDialogOpen(true);
+      return;
+    }
+
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
     setError("");
@@ -81,6 +90,13 @@ export function LikeAnimalButton({
           {error}
         </span>
       ) : null}
+
+      <AuthRequiredDialog
+        isOpen={isAuthDialogOpen}
+        onClose={() => setIsAuthDialogOpen(false)}
+        title="Зареєструйтеся, щоб додати в обране"
+        description={`Створіть акаунт або увійдіть, щоб зберегти ${animalName} в обраних.`}
+      />
     </span>
   );
 }
