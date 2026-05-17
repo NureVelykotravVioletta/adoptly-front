@@ -12,7 +12,9 @@ type ShelterEditPageProps = {
   }>;
 };
 
-export default async function ShelterEditPage({ params }: ShelterEditPageProps) {
+export default async function ShelterEditPage({
+  params,
+}: ShelterEditPageProps) {
   const currentUser = await getCurrentUser();
 
   if (!isAdminUser(currentUser)) {
@@ -28,7 +30,6 @@ export default async function ShelterEditPage({ params }: ShelterEditPageProps) 
 
   const animals = await getShelterAnimals({
     shelterId: shelter.id,
-    shelterName: shelter.name,
   });
 
   return (

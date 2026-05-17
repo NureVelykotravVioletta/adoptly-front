@@ -45,6 +45,17 @@ export type UpdateShelterPayload = Partial<{
   foundedAt: string;
 }>;
 
+export type CreateShelterPayload = {
+  name: string;
+  city: string;
+  address?: string;
+  description?: string;
+  phone?: string;
+  email?: string;
+  workingHours?: string;
+  foundedAt?: string;
+};
+
 type ShelterApiItem = Partial<{
   id: string | number;
   _id: string | number;
@@ -158,20 +169,23 @@ export async function deleteShelter(token: string, shelterId: string) {
   let lastError: ApiError | null = null;
 
   for (const pathname of endpointCandidates) {
-    const response = await fetch(new URL(pathname, getApiBaseUrl()).toString(), {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await fetch(
+      new URL(pathname, getApiBaseUrl()).toString(),
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (response.ok) {
       return;
     }
 
-    const data = (await response.json().catch(() => null)) as
-      | { message?: string | string[] }
-      | null;
+    const data = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
     const message = Array.isArray(data?.message)
       ? data.message.join(" ")
       : data?.message;
@@ -189,6 +203,68 @@ export async function deleteShelter(token: string, shelterId: string) {
   }
 
   throw lastError ?? new ApiError("Не знайдено endpoint для видалення.", 404);
+}
+
+export async function createShelter(
+  token: string,
+  payload: CreateShelterPayload
+) {
+  const requests = ["/shelters", "/shelter"];
+  let lastRouteError: ApiError | null = null;
+
+  for (const pathname of requests) {
+    const response = await fetch(new URL(pathname, getApiBaseUrl()), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+      body: JSON.stringify(payload),
+    });
+    const responseText = await response.text().catch(() => "");
+    const data = (responseText ? safeParseJson(responseText) : null) as
+      | ShelterApiItem
+      | Partial<{
+          item: ShelterApiItem;
+          data: ShelterApiItem;
+          shelter: ShelterApiItem;
+          message: string | string[];
+        }>
+      | null;
+
+    if (!response.ok) {
+      const error = new ApiError(
+        getShelterApiErrorMessage(
+          data,
+          responseText,
+          "Не вдалося створити притулок."
+        ),
+        response.status
+      );
+
+      if (response.status === 404) {
+        lastRouteError = error;
+        continue;
+      }
+
+      throw error;
+    }
+
+    const apiItem =
+      data && isRecord(data) && isShelterDetailsResponse(data)
+        ? (data.item ?? data.data ?? data.shelter)
+        : data;
+
+    return apiItem && isRecord(apiItem) && isShelterItemRecord(apiItem)
+      ? normalizeShelter(apiItem)
+      : null;
+  }
+
+  throw (
+    lastRouteError ??
+    new ApiError("Не знайдено endpoint для створення притулку.", 404)
+  );
 }
 
 export async function updateShelter(
@@ -285,64 +361,109 @@ export async function uploadShelterPhoto(
     `/shelter/${encodeURIComponent(shelterId)}/image`,
     `/shelter/${encodeURIComponent(shelterId)}/photo`,
   ];
+  const fileFields = ["image", "photo", "file", "photos", "images"];
   let lastRouteError: ApiError | null = null;
 
   for (const pathname of requests) {
-    const formData = new FormData();
-    formData.set("image", file);
-    formData.set("file", file);
-    formData.set("photo", file);
+    for (const field of fileFields) {
+      const formData = new FormData();
+      formData.set(field, file);
 
-    const response = await fetch(new URL(pathname, getApiBaseUrl()), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-      body: formData,
-    });
-    const responseText = await response.text().catch(() => "");
-    const data = (responseText ? safeParseJson(responseText) : null) as
-      | ShelterApiItem
-      | Partial<{
-          item: ShelterApiItem;
-          data: ShelterApiItem;
-          shelter: ShelterApiItem;
-          message: string | string[];
-        }>
-      | null;
+      const response = await fetch(new URL(pathname, getApiBaseUrl()), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: formData,
+      });
+      const responseText = await response.text().catch(() => "");
+      const data = (responseText ? safeParseJson(responseText) : null) as
+        | ShelterApiItem
+        | Partial<{
+            item: ShelterApiItem;
+            data: ShelterApiItem;
+            shelter: ShelterApiItem;
+            message: string | string[];
+          }>
+        | null;
 
-    if (!response.ok) {
-      const error = new ApiError(
-        getShelterApiErrorMessage(
-          data,
-          responseText,
-          "Не вдалося завантажити фото притулку."
-        ),
-        response.status
-      );
+      if (!response.ok) {
+        const error = new ApiError(
+          getShelterApiErrorMessage(
+            data,
+            responseText,
+            "Не вдалося завантажити фото притулку."
+          ),
+          response.status
+        );
 
-      if (response.status === 404) {
-        lastRouteError = error;
-        continue;
+        if (response.status === 404 || isUnexpectedUploadFieldError(error)) {
+          lastRouteError = error;
+          continue;
+        }
+
+        throw error;
       }
 
-      throw error;
+      const apiItem =
+        data && isRecord(data) && isShelterDetailsResponse(data)
+          ? (data.item ?? data.data ?? data.shelter)
+          : data;
+
+      return apiItem && isRecord(apiItem) && isShelterItemRecord(apiItem)
+        ? normalizeShelter(apiItem)
+        : null;
     }
-
-    const apiItem =
-      data && isRecord(data) && isShelterDetailsResponse(data)
-        ? (data.item ?? data.data ?? data.shelter)
-        : data;
-
-    return apiItem && isRecord(apiItem) && isShelterItemRecord(apiItem)
-      ? normalizeShelter(apiItem)
-      : null;
   }
 
   throw (
     lastRouteError ??
     new ApiError("Не знайдено endpoint для завантаження фото.", 404)
+  );
+}
+
+function isUnexpectedUploadFieldError(error: ApiError) {
+  return error.message.toLowerCase().includes("unexpected field");
+}
+
+export async function deleteShelterPhoto(
+  token: string,
+  shelterId: string,
+  photoUrl: string
+) {
+  const response = await fetch(
+    new URL(
+      `/shelter/${encodeURIComponent(shelterId)}/photo/${encodeURIComponent(
+        photoUrl
+      )}`,
+      getApiBaseUrl()
+    ),
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (response.ok) {
+    return;
+  }
+
+  const responseText = await response.text().catch(() => "");
+  const data = (responseText ? safeParseJson(responseText) : null) as {
+    message?: string | string[];
+  } | null;
+
+  throw new ApiError(
+    getShelterApiErrorMessage(
+      data,
+      responseText,
+      "Не вдалося видалити фото притулку."
+    ),
+    response.status
   );
 }
 

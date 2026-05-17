@@ -33,6 +33,17 @@ export type GetAnimalsParams = {
   city?: string;
 };
 
+export type CreateAnimalPayload = {
+  name: string;
+  type: string;
+  age: number;
+  gender: string;
+  shelterId: string;
+  breed?: string;
+  description?: string;
+  healthStatus?: string;
+};
+
 type AnimalApiItem = Partial<{
   id: string | number;
   _id: string | number;
@@ -75,7 +86,7 @@ type AnimalApiShelter = Partial<{
 
 type AnimalsApiResponse = Partial<{
   items: AnimalApiItem[];
-  data: AnimalApiItem[];
+  data: AnimalApiItem[] | AnimalApiItem;
   item: AnimalApiItem;
   animal: AnimalApiItem;
   animals: AnimalApiItem[];
@@ -167,35 +178,37 @@ export async function getAnimal(id: string): Promise<Animal | null> {
 
 export async function getShelterAnimals({
   shelterId,
-  shelterName,
 }: {
   shelterId: string;
-  shelterName: string;
 }): Promise<Animal[]> {
-  const endpointCandidates = [
-    `/shelters/${encodeURIComponent(shelterId)}/animals`,
-    `/shelters/${encodeURIComponent(shelterId)}/pets`,
-  ];
+  return (
+    (await requestAllShelterAnimals(
+      `/shelter/${encodeURIComponent(shelterId)}/animals`
+    )) ?? []
+  );
+}
 
-  for (const pathname of endpointCandidates) {
-    const page = await requestAnimalsPage(pathname, { page: 1, limit: 100 });
+async function requestAllShelterAnimals(pathname: string) {
+  const firstPage = await requestAnimalsPage(pathname, { page: 1, limit: 100 });
 
-    if (page) {
-      return page.items;
-    }
+  if (!firstPage) {
+    return null;
   }
 
-  const animalsPage = await getAnimals({ page: 1, limit: 100 });
-  const normalizedShelterName = shelterName.trim().toLocaleLowerCase("uk-UA");
+  if (firstPage.totalPages <= 1) {
+    return firstPage.items;
+  }
 
-  return animalsPage.items.filter((animal) => {
-    const matchesShelterId = animal.shelterId === shelterId;
-    const matchesShelterName =
-      animal.shelterName.trim().toLocaleLowerCase("uk-UA") ===
-      normalizedShelterName;
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
+      requestAnimalsPage(pathname, { page: index + 2, limit: firstPage.limit })
+    )
+  );
 
-    return matchesShelterId || matchesShelterName;
-  });
+  return [
+    ...firstPage.items,
+    ...remainingPages.flatMap((page) => page?.items ?? []),
+  ];
 }
 
 export async function getLikedAnimals(token: string): Promise<Animal[]> {
@@ -261,6 +274,233 @@ export async function deleteAnimal(token: string, animalId: string) {
   }
 
   throw lastError ?? new ApiError("Не знайдено endpoint для видалення.", 404);
+}
+
+export async function createAnimal(
+  token: string,
+  payload: CreateAnimalPayload,
+  image?: File | null
+) {
+  const endpointCandidates = [
+    `/shelters/${encodeURIComponent(payload.shelterId)}/animals`,
+    `/shelter/${encodeURIComponent(payload.shelterId)}/animals`,
+    "/animals",
+    "/pets",
+  ];
+  let lastRouteError: ApiError | null = null;
+
+  for (const pathname of endpointCandidates) {
+    for (const requestPayload of getCreateAnimalPayloadCandidates(
+      payload,
+      pathname
+    )) {
+      const result = image
+        ? await requestCreateAnimalWithImage(
+            token,
+            pathname,
+            requestPayload,
+            image
+          )
+        : await requestCreateAnimal(token, pathname, requestPayload);
+
+      if (result.ok) {
+        return result.animal;
+      }
+
+      if (
+        result.error.status === 404 ||
+        isUnexpectedUploadFieldError(result.error) ||
+        isValidationFailedError(result.error)
+      ) {
+        lastRouteError = result.error;
+        continue;
+      }
+
+      throw result.error;
+    }
+  }
+
+  throw (
+    lastRouteError ??
+    new ApiError("Не знайдено endpoint для створення тварини.", 404)
+  );
+}
+
+async function requestCreateAnimal(
+  token: string,
+  pathname: string,
+  payload: Record<string, string | number>
+) {
+  const response = await fetch(createApiUrl(pathname), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+    body: JSON.stringify(payload),
+  });
+
+  return parseCreateAnimalResponse(response);
+}
+
+async function requestCreateAnimalWithImage(
+  token: string,
+  pathname: string,
+  payload: Record<string, string | number>,
+  image: File
+) {
+  const imageFields = ["image", "photo", "file", "images", "photos"];
+  let lastError: ApiError | null = null;
+
+  for (const imageField of imageFields) {
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([field, value]) => {
+      if (value !== undefined && value !== "") {
+        formData.set(field, String(value));
+      }
+    });
+    formData.set(imageField, image);
+
+    const response = await fetch(createApiUrl(pathname), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+      body: formData,
+    });
+    const result = await parseCreateAnimalResponse(response);
+
+    if (result.ok) {
+      return result;
+    }
+
+    lastError = result.error;
+
+    if (!isUnexpectedUploadFieldError(result.error)) {
+      return result;
+    }
+  }
+
+  return {
+    ok: false as const,
+    error:
+      lastError ?? new ApiError("Не вдалося завантажити фото тварини.", 400),
+  };
+}
+
+function getCreateAnimalPayloadCandidates(
+  payload: CreateAnimalPayload,
+  pathname: string
+): Record<string, string | number>[] {
+  const { shelterId, ...restPayload } = payload;
+  const isShelterScopedEndpoint =
+    pathname.startsWith("/shelters/") || pathname.startsWith("/shelter/");
+  const shelterPayload = isShelterScopedEndpoint ? {} : { shelterId };
+
+  return [
+    compactCreateAnimalPayload({
+      ...restPayload,
+      ...shelterPayload,
+    }),
+  ];
+}
+
+function compactCreateAnimalPayload(
+  values: Record<string, string | number | undefined>
+) {
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      (entry): entry is [string, string | number] =>
+        entry[1] !== undefined && entry[1] !== ""
+    )
+  );
+}
+
+async function parseCreateAnimalResponse(response: Response) {
+  const responseText = await response.text().catch(() => "");
+  const data = (responseText ? safeParseJson(responseText) : null) as
+    | AnimalsApiResponse
+    | AnimalApiItem
+    | { message?: string | string[] }
+    | null;
+
+  if (!response.ok) {
+    return {
+      ok: false as const,
+      error: new ApiError(
+        getAnimalApiErrorMessage(data, "Не вдалося створити тварину."),
+        response.status
+      ),
+    };
+  }
+
+  return {
+    ok: true as const,
+    animal: isAnimalCreateResponse(data) ? normalizeAnimalDetails(data) : null,
+  };
+}
+
+function isAnimalCreateResponse(
+  data:
+    | AnimalsApiResponse
+    | AnimalApiItem
+    | { message?: string | string[] }
+    | null
+): data is AnimalsApiResponse | AnimalApiItem {
+  return Boolean(data && isRecord(data) && !("message" in data));
+}
+
+export async function removeAnimalFromShelter(
+  token: string,
+  shelterId: string,
+  animalId: string
+) {
+  const endpointCandidates = [
+    `/shelters/${encodeURIComponent(shelterId)}/animals/${encodeURIComponent(
+      animalId
+    )}`,
+    `/shelters/${encodeURIComponent(shelterId)}/animal/${encodeURIComponent(
+      animalId
+    )}`,
+  ];
+  let lastError: ApiError | null = null;
+
+  for (const pathname of endpointCandidates) {
+    const response = await fetch(createApiUrl(pathname), {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      return;
+    }
+
+    const data = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const error = new ApiError(
+      getAnimalApiErrorMessage(data, "Не вдалося прибрати тварину з притулку."),
+      response.status
+    );
+
+    if (response.status === 404) {
+      lastError = error;
+      continue;
+    }
+
+    throw error;
+  }
+
+  throw (
+    lastError ??
+    new ApiError("Не знайдено endpoint для видалення тварини з притулку.", 404)
+  );
 }
 
 export async function setLikedAnimal(
@@ -379,7 +619,12 @@ function normalizeAnimalsPage(
     );
   }
 
-  const apiItems = data.items ?? data.data ?? data.animals ?? data.pets ?? [];
+  const apiItems =
+    data.items ??
+    getAnimalApiItemArray(data.data) ??
+    data.animals ??
+    data.pets ??
+    [];
   const meta = data.meta;
   const pagination = data.pagination;
   const total =
@@ -436,13 +681,29 @@ function normalizeAnimalDetails(
     ? (data.item ??
       data.animal ??
       data.pet ??
-      data.data?.[0] ??
+      getFirstAnimalApiItem(data.data) ??
       data.items?.[0] ??
       data.animals?.[0] ??
       data.pets?.[0])
     : data;
 
   return apiItem ? normalizeAnimal(apiItem, 0) : null;
+}
+
+function getFirstAnimalApiItem(
+  data: AnimalApiItem | AnimalApiItem[] | undefined
+) {
+  return Array.isArray(data) ? data[0] : data;
+}
+
+function getAnimalApiItemArray(
+  data: AnimalApiItem | AnimalApiItem[] | undefined
+) {
+  if (!data) {
+    return undefined;
+  }
+
+  return Array.isArray(data) ? data : [data];
 }
 
 export async function normalizeLikedAnimalsData(
@@ -529,6 +790,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function createApiUrl(pathname: string) {
   return new URL(pathname, getApiBaseUrl()).toString();
+}
+
+function safeParseJson(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function isUnexpectedUploadFieldError(error: ApiError) {
+  return error.message.toLowerCase().includes("unexpected field");
+}
+
+function isValidationFailedError(error: ApiError) {
+  return error.message.toLowerCase().includes("validation failed");
 }
 
 function getAnimalApiErrorMessage(data: unknown, fallbackMessage: string) {

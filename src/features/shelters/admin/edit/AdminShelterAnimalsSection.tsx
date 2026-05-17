@@ -1,25 +1,28 @@
 import type { Animal } from "@/src/features/animals/animals.api";
 import TrashIcon from "@/src/assets/icons/TrashIcon.svg";
+import { AdminCreateAnimalDialog } from "@/src/features/shelters/admin/edit/AdminCreateAnimalDialog";
 
 type AdminShelterAnimalsSectionProps = {
+  shelterId: string;
   animals: Animal[];
+  onAnimalCreated: (animal: Animal) => void;
   onRemoveAnimal: (animalId: string) => void;
 };
 
 export function AdminShelterAnimalsSection({
+  shelterId,
   animals,
+  onAnimalCreated,
   onRemoveAnimal,
 }: AdminShelterAnimalsSectionProps) {
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl font-bold">Тварини</h2>
-        <button
-          type="button"
-          className="h-12 cursor-pointer rounded-full bg-[#8456F0] px-7 text-sm font-semibold text-white transition hover:bg-[#7045D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
-        >
-          Додати +
-        </button>
+        <AdminCreateAnimalDialog
+          shelterId={shelterId}
+          onCreated={onAnimalCreated}
+        />
       </div>
 
       {animals.length > 0 ? (

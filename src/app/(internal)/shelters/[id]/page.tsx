@@ -29,7 +29,6 @@ export default async function ShelterDetailsPage({
   const images = shelter.images.length > 0 ? shelter.images : [];
   const shelterAnimals = await getShelterAnimals({
     shelterId: shelter.id,
-    shelterName: shelter.name,
   });
   const token = await getAuthToken();
   const currentUser = token ? await getCurrentUser() : null;

@@ -5,11 +5,14 @@ import { ApiError } from "@/src/features/auth/auth.api";
 import { isAdminUser } from "@/src/features/auth/auth.roles";
 import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
 import {
+  createShelter,
   deleteShelter,
+  deleteShelterPhoto,
   updateShelter,
   uploadShelterPhoto,
 } from "@/src/features/shelters/shelters.api";
 import type {
+  CreateShelterPayload,
   Shelter,
   UpdateShelterPayload,
 } from "@/src/features/shelters/shelters.api";
@@ -24,8 +27,18 @@ export type UpdateShelterActionState = {
   error?: string;
 };
 
+export type CreateShelterActionState = {
+  shelter?: Shelter | null;
+  error?: string;
+};
+
 export type UploadShelterPhotoActionState = {
   shelter?: Shelter | null;
+  error?: string;
+};
+
+export type DeleteShelterPhotoActionState = {
+  success?: boolean;
   error?: string;
 };
 
@@ -54,6 +67,38 @@ export async function deleteShelterAction(
         error instanceof ApiError
           ? error.message
           : "Не вдалося видалити притулок.",
+    };
+  }
+}
+
+export async function createShelterAction(
+  formData: FormData
+): Promise<CreateShelterActionState> {
+  const token = await getAuthToken();
+  const user = await getCurrentUser();
+
+  if (!token || !isAdminUser(user)) {
+    return { error: "Недостатньо прав для створення притулку." };
+  }
+
+  const payload = getCreateShelterPayload(formData);
+
+  if ("error" in payload) {
+    return { error: payload.error };
+  }
+
+  try {
+    const shelter = await createShelter(token, payload.data);
+
+    revalidatePath("/shelters");
+
+    return { shelter };
+  } catch (error) {
+    return {
+      error:
+        error instanceof ApiError
+          ? error.message
+          : "Не вдалося створити притулок.",
     };
   }
 }
@@ -107,7 +152,12 @@ export async function uploadShelterPhotoAction(
     return { error: "Недостатньо прав для додавання фото притулку." };
   }
 
-  const file = formData.get("image") ?? formData.get("file") ?? formData.get("photo");
+  const file =
+    formData.get("image") ??
+    formData.get("photo") ??
+    formData.get("file") ??
+    formData.get("photos") ??
+    formData.get("images");
 
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Оберіть фото для завантаження." };
@@ -137,6 +187,78 @@ export async function uploadShelterPhotoAction(
           : "Не вдалося завантажити фото притулку.",
     };
   }
+}
+
+export async function deleteShelterPhotoAction(
+  shelterId: string,
+  photoUrl: string
+): Promise<DeleteShelterPhotoActionState> {
+  const token = await getAuthToken();
+  const user = await getCurrentUser();
+
+  if (!token || !isAdminUser(user)) {
+    return { error: "Недостатньо прав для видалення фото притулку." };
+  }
+
+  if (!photoUrl.trim()) {
+    return { error: "Не вдалося визначити фото для видалення." };
+  }
+
+  try {
+    await deleteShelterPhoto(token, shelterId, photoUrl);
+
+    revalidatePath("/shelters");
+    revalidatePath(`/shelters/${shelterId}`);
+    revalidatePath(`/shelters/${shelterId}/edit`);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof ApiError
+          ? error.message
+          : "Не вдалося видалити фото притулку.",
+    };
+  }
+}
+
+function getCreateShelterPayload(
+  formData: FormData
+): { data: CreateShelterPayload } | { error: string } {
+  const name = getOptionalStringValue(formData, "name") ?? "";
+  const city = getOptionalStringValue(formData, "city") ?? "";
+
+  if (name.length === 0) {
+    return { error: "Назва притулку не може бути порожньою." };
+  }
+
+  if (city.length === 0) {
+    return { error: "Місто не може бути порожнім." };
+  }
+
+  const payload: CreateShelterPayload = { name, city };
+  const optionalFields = [
+    "address",
+    "description",
+    "phone",
+    "email",
+    "workingHours",
+    "foundedAt",
+  ] as const;
+
+  optionalFields.forEach((field) => {
+    const value = getOptionalStringValue(formData, field);
+
+    if (value) {
+      payload[field] = value;
+    }
+  });
+
+  if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    return { error: "Введіть коректну пошту притулку." };
+  }
+
+  return { data: payload };
 }
 
 function getUpdateShelterPayload(
