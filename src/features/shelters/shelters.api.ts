@@ -1,139 +1,20 @@
 import { ApiError, getApiBaseUrl } from "@/src/features/auth/auth.api";
+import type {
+  ApiPage,
+  CreateShelterRequest,
+  Shelter,
+  ShelterApiImage,
+  ShelterApiItem,
+  SheltersApiResponse,
+  SheltersQuery,
+  UpdateShelterRequest,
+} from "@/src/types/api";
 
-export type Shelter = {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  description: string;
-  imageUrl: string | null;
-  images: string[];
-  animalsCount: number;
-  rating: number;
-  phone: string;
-  email: string;
-  workingHours: string;
-  foundedAt: string;
-};
-
-export type SheltersPageData = {
-  items: Shelter[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-};
-
-export type GetSheltersParams = {
-  page: number;
-  limit: number;
-  search?: string;
-  city?: string;
-};
-
-export type UpdateShelterPayload = Partial<{
-  name: string;
-  city: string;
-  address: string;
-  description: string;
-  imageUrl: string | null;
-  images: string[];
-  animalsCount: number;
-  phone: string;
-  email: string;
-  workingHours: string;
-  foundedAt: string;
-}>;
-
-export type CreateShelterPayload = {
-  name: string;
-  city: string;
-  address?: string;
-  description?: string;
-  phone?: string;
-  email?: string;
-  workingHours?: string;
-  foundedAt?: string;
-};
-
-type ShelterApiItem = Partial<{
-  id: string | number;
-  _id: string | number;
-  name: string;
-  title: string;
-  city: string;
-  location: string;
-  address: string;
-  phone: string;
-  phoneNumber: string;
-  contactPhone: string;
-  email: string;
-  contactEmail: string;
-  workingHours: string;
-  workHours: string;
-  hours: string;
-  schedule: string;
-  foundedAt: string;
-  foundedYear: string | number;
-  createdAt: string;
-  description: string;
-  about: string;
-  imageUrl: string | null;
-  image: string | null;
-  photoUrl: string | null;
-  coverUrl: string | null;
-  images: ShelterApiImage[];
-  rating: number;
-  stars: number;
-  animalsCount: number;
-  animalCount: number;
-  petsCount: number;
-  petCount: number;
-  animals: unknown[];
-  pets: unknown[];
-}>;
-
-type ShelterApiImage =
-  | string
-  | null
-  | Partial<{
-      url: string | null;
-      src: string | null;
-      imageUrl: string | null;
-      secureUrl: string | null;
-      path: string | null;
-    }>;
-
-type SheltersApiResponse = Partial<{
-  items: ShelterApiItem[];
-  data: ShelterApiItem[];
-  shelters: ShelterApiItem[];
-  page: number;
-  currentPage: number;
-  limit: number;
-  total: number;
-  totalItems: number;
-  totalCount: number;
-  count: number;
-  totalPages: number;
-  pages: number;
-  lastPage: number;
-  meta: PaginationMeta;
-  pagination: PaginationMeta;
-}>;
-
-type PaginationMeta = Partial<{
-  page: number;
-  currentPage: number;
-  limit: number;
-  total: number;
-  totalItems: number;
-  totalCount: number;
-  count: number;
-  totalPages: number;
-  pages: number;
-  lastPage: number;
-}>;
+export type { Shelter };
+export type SheltersPageData = ApiPage<Shelter>;
+export type GetSheltersParams = SheltersQuery;
+export type UpdateShelterPayload = UpdateShelterRequest;
+export type CreateShelterPayload = CreateShelterRequest;
 
 export async function getShelters(
   params: GetSheltersParams

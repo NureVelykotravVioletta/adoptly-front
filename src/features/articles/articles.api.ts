@@ -1,82 +1,20 @@
-import { getApiBaseUrl } from "@/src/features/auth/auth.api";
+import { ApiError, getApiBaseUrl } from "@/src/features/auth/auth.api";
+import type {
+  ApiPage,
+  Article,
+  ArticleApiItem,
+  ArticlesApiResponse,
+  ArticlesQuery,
+  CreateArticleRequest,
+  UpdateArticleRequest,
+} from "@/src/types/api";
 
-export type Article = {
-  id: string;
-  title: string;
-  text: string;
-  imageUrl: string | null;
-  createdAt: string;
-};
+export type { Article };
+export type ArticlesPageData = ApiPage<Article>;
+export type CreateArticlePayload = CreateArticleRequest;
+export type UpdateArticlePayload = UpdateArticleRequest;
 
-export type ArticlesPageData = {
-  items: Article[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-};
-
-type ArticleApiItem = Partial<{
-  id: string | number;
-  _id: string | number;
-  title: string;
-  name: string;
-  text: string;
-  content: string;
-  description: string;
-  imageUrl: string | null;
-  image: string | null;
-  photoUrl: string | null;
-  createdAt: string;
-  date: string;
-  updatedAt: string;
-}>;
-
-type ArticlesApiResponse = Partial<{
-  items: ArticleApiItem[];
-  data: ArticleApiItem[];
-  articles: ArticleApiItem[];
-  page: number;
-  currentPage: number;
-  limit: number;
-  total: number;
-  totalItems: number;
-  totalCount: number;
-  count: number;
-  totalPages: number;
-  pages: number;
-  lastPage: number;
-  meta: Partial<{
-    page: number;
-    currentPage: number;
-    limit: number;
-    total: number;
-    totalItems: number;
-    totalCount: number;
-    count: number;
-    totalPages: number;
-    pages: number;
-    lastPage: number;
-  }>;
-  pagination: Partial<{
-    page: number;
-    currentPage: number;
-    limit: number;
-    total: number;
-    totalItems: number;
-    totalCount: number;
-    count: number;
-    totalPages: number;
-    pages: number;
-    lastPage: number;
-  }>;
-}>;
-
-type GetArticlesParams = {
-  page: number;
-  limit: number;
-  search?: string;
-};
+type GetArticlesParams = ArticlesQuery;
 
 export async function getArticles({
   page,
@@ -88,6 +26,174 @@ export async function getArticles({
   }
 
   return requestArticlesPage({ page, limit });
+}
+
+export async function getArticle(id: string): Promise<Article | null> {
+  const response = await fetch(
+    new URL(`/articles/${encodeURIComponent(id)}`, getApiBaseUrl()),
+    { cache: "no-store" },
+  ).catch(() => null);
+
+  if (!response || !response.ok) {
+    return null;
+  }
+
+  const data = (await response.json().catch(() => null)) as
+    | ArticlesApiResponse
+    | ArticleApiItem
+    | null;
+
+  return normalizeArticleDetails(data);
+}
+
+export async function createArticle(token: string, payload: CreateArticlePayload) {
+  const response = await requestArticleMutation(token, {
+    method: "POST",
+    pathname: "/articles",
+    payload,
+  });
+
+  return parseArticleMutationResponse(
+    response,
+    "Не вдалося створити статтю.",
+  );
+}
+
+export async function updateArticle(
+  token: string,
+  articleId: string,
+  payload: UpdateArticlePayload,
+) {
+  const requests = [
+    { method: "PATCH", pathname: `/articles/${encodeURIComponent(articleId)}` },
+    { method: "PUT", pathname: `/articles/${encodeURIComponent(articleId)}` },
+  ];
+  let lastRouteError: ApiError | null = null;
+
+  for (const request of requests) {
+    const response = await requestArticleMutation(token, {
+      method: request.method,
+      pathname: request.pathname,
+      payload,
+    });
+
+    if (response.status === 404) {
+      const data = (await response.json().catch(() => null)) as {
+        message?: string | string[];
+      } | null;
+      lastRouteError = new ApiError(
+        getArticleApiErrorMessage(data, "Не знайдено endpoint для редагування статті."),
+        response.status,
+      );
+      continue;
+    }
+
+    return parseArticleMutationResponse(
+      response,
+      "Не вдалося зберегти статтю.",
+    );
+  }
+
+  throw (
+    lastRouteError ??
+    new ApiError("Не знайдено endpoint для редагування статті.", 404)
+  );
+}
+
+async function requestArticleMutation(
+  token: string,
+  request: {
+    method: string;
+    pathname: string;
+    payload: CreateArticlePayload | UpdateArticlePayload;
+  },
+) {
+  const hasFileImage = request.payload.image instanceof File;
+
+  if (hasFileImage) {
+    const formData = new FormData();
+
+    Object.entries(request.payload).forEach(([field, value]) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (field === "image" && value instanceof File) {
+        formData.set(field, value);
+        return;
+      }
+
+      formData.set(field, value ?? "");
+    });
+
+    return fetch(new URL(request.pathname, getApiBaseUrl()), {
+      method: request.method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+      body: formData,
+    });
+  }
+
+  return fetch(new URL(request.pathname, getApiBaseUrl()), {
+    method: request.method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+    body: JSON.stringify(request.payload),
+  });
+}
+
+export async function deleteArticle(token: string, articleId: string) {
+  const response = await fetch(
+    new URL(`/articles/${encodeURIComponent(articleId)}`, getApiBaseUrl()),
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    },
+  );
+  const data = (await response.json().catch(() => null)) as {
+    message?: string | string[];
+  } | null;
+
+  if (!response.ok) {
+    throw new ApiError(
+      getArticleApiErrorMessage(data, "Не вдалося видалити статтю."),
+      response.status,
+    );
+  }
+}
+
+async function parseArticleMutationResponse(
+  response: Response,
+  fallbackMessage: string,
+) {
+  const responseText = await response.text().catch(() => "");
+  const data = (responseText ? safeParseJson(responseText) : null) as
+    | ArticlesApiResponse
+    | ArticleApiItem
+    | { message?: string | string[] }
+    | null;
+
+  if (!response.ok) {
+    throw new ApiError(
+      getArticleApiErrorMessage(data, fallbackMessage),
+      response.status,
+    );
+  }
+
+  const articleData =
+    data && isRecord(data) && "message" in data
+      ? null
+      : (data as ArticlesApiResponse | ArticleApiItem | null);
+
+  return normalizeArticleDetails(articleData);
 }
 
 async function getFilteredArticles({
@@ -161,7 +267,8 @@ function normalizeArticlesPage(
     };
   }
 
-  const apiItems = data?.items ?? data?.data ?? data?.articles ?? [];
+  const apiItems =
+    data?.items ?? getArticleApiItemArray(data?.data) ?? data?.articles ?? [];
   const meta = data?.meta;
   const pagination = data?.pagination;
   const total =
@@ -207,6 +314,40 @@ function normalizeArticlesPage(
   };
 }
 
+function normalizeArticleDetails(
+  data: ArticlesApiResponse | ArticleApiItem | null,
+): Article | null {
+  if (!data) {
+    return null;
+  }
+
+  const apiItem = isArticlesApiResponse(data)
+    ? (data.item ??
+      data.article ??
+      getFirstArticleApiItem(data.data) ??
+      data.items?.[0] ??
+      data.articles?.[0])
+    : data;
+
+  return apiItem ? normalizeArticle(apiItem, 0) : null;
+}
+
+function getFirstArticleApiItem(
+  data: ArticleApiItem | ArticleApiItem[] | undefined,
+) {
+  return Array.isArray(data) ? data[0] : data;
+}
+
+function getArticleApiItemArray(
+  data: ArticleApiItem | ArticleApiItem[] | undefined,
+) {
+  if (!data) {
+    return undefined;
+  }
+
+  return Array.isArray(data) ? data : [data];
+}
+
 function normalizeArticle(article: ArticleApiItem, index: number): Article {
   const id = article.id ?? article._id ?? `article-${index}`;
 
@@ -227,4 +368,43 @@ function createEmptyArticlesPage(page: number, limit: number): ArticlesPageData 
     total: 0,
     totalPages: 1,
   };
+}
+
+function isArticlesApiResponse(
+  data: ArticlesApiResponse | ArticleApiItem,
+): data is ArticlesApiResponse {
+  return (
+    "items" in data ||
+    "data" in data ||
+    "article" in data ||
+    "articles" in data ||
+    "item" in data
+  );
+}
+
+function getArticleApiErrorMessage(data: unknown, fallbackMessage: string) {
+  const message =
+    data && typeof data === "object" && "message" in data ? data.message : null;
+
+  if (typeof message === "string" && message.length > 0) {
+    return message;
+  }
+
+  if (Array.isArray(message) && message.length > 0) {
+    return message.join(", ");
+  }
+
+  return fallbackMessage;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function safeParseJson(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 }

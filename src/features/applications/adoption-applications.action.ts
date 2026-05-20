@@ -90,6 +90,7 @@ function createLocalApplication({
     message: message || null,
     status: "PENDING",
     userId,
+    user: null,
     animalId,
     animal: null,
     createdAt,

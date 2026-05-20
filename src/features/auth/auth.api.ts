@@ -1,37 +1,16 @@
-export type RegisterPayload = {
-  name: string;
-  email: string;
-  password: string;
-};
+import type {
+  ApiUser,
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+  UpdateProfileRequest,
+} from "@/src/types/api";
 
-export type LoginPayload = {
-  email: string;
-  password: string;
-};
-
-export type UpdateProfilePayload = Partial<{
-  name: string;
-  email: string;
-  phone: string | null;
-}>;
-
-export type AuthUser = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  avatarUrl: string | null;
-  role: string;
-  likedAnimals?: unknown[];
-  applications?: unknown[];
-  adoptionApplications?: unknown[];
-};
-
-export type AuthResponse = {
-  message: string;
-  token: string;
-  user: AuthUser;
-};
+export type RegisterPayload = RegisterRequest;
+export type LoginPayload = LoginRequest;
+export type UpdateProfilePayload = UpdateProfileRequest;
+export type AuthUser = ApiUser;
+export type { AuthResponse };
 
 export class ApiError extends Error {
   constructor(

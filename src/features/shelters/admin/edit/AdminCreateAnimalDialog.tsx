@@ -280,6 +280,10 @@ export function AdminCreateAnimalDialog({
             name="healthStatus"
             value={values.healthStatus}
             placeholder="Стан здоровʼя"
+            error={
+              touchedFields.healthStatus ? fieldErrors.healthStatus : undefined
+            }
+            required
             onChange={handleChange}
             onBlur={handleBlur}
           />
@@ -290,6 +294,10 @@ export function AdminCreateAnimalDialog({
             name="description"
             value={values.description}
             placeholder="Опис"
+            error={
+              touchedFields.description ? fieldErrors.description : undefined
+            }
+            required
             onChange={handleChange}
             onBlur={handleBlur}
           />
@@ -422,6 +430,8 @@ type AnimalTextareaProps = {
   name: "description";
   value: string;
   placeholder: string;
+  required?: boolean;
+  error?: string;
   onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onBlur: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
 };
@@ -430,6 +440,8 @@ function AnimalTextarea({
   name,
   value,
   placeholder,
+  required = false,
+  error,
   onChange,
   onBlur,
 }: AnimalTextareaProps) {
@@ -440,10 +452,18 @@ function AnimalTextarea({
         value={value}
         placeholder={placeholder}
         aria-label={placeholder}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${name}-error` : undefined}
+        required={required}
         onChange={onChange}
         onBlur={onBlur}
-        className="min-h-32 w-full resize-none rounded-3xl border border-[#8456F0] bg-white px-5 py-4 text-base leading-6 text-[#262626] outline-none placeholder:text-[#9CA3AF] focus:border-[#7045D1] focus:placeholder:text-transparent"
+        className="min-h-32 w-full resize-none rounded-3xl border border-[#8456F0] bg-white px-5 py-4 text-base leading-6 text-[#262626] outline-none placeholder:text-[#9CA3AF] focus:border-[#7045D1] focus:placeholder:text-transparent aria-invalid:border-rose-500"
       />
+      {error ? (
+        <p id={`${name}-error`} className="mt-2 px-5 text-sm text-rose-600">
+          {error}
+        </p>
+      ) : null}
     </label>
   );
 }
@@ -467,6 +487,14 @@ function validateAnimalValues(values: AnimalFormValues) {
 
   if (values.gender.trim().length === 0) {
     errors.gender = "Стать тварини не може бути порожньою.";
+  }
+
+  if (values.healthStatus.trim().length === 0) {
+    errors.healthStatus = "Стан здоровʼя тварини не може бути порожнім.";
+  }
+
+  if (values.description.trim().length === 0) {
+    errors.description = "Опис тварини не може бути порожнім.";
   }
 
   return errors;

@@ -1,143 +1,22 @@
 import { ApiError, getApiBaseUrl } from "@/src/features/auth/auth.api";
+import type {
+  Animal,
+  AnimalApiImage,
+  AnimalApiItem,
+  AnimalsApiResponse,
+  AnimalsQuery,
+  ApiPage,
+  CreateAnimalRequest,
+  LikedAnimalApiItem,
+  LikedAnimalsApiResponse,
+  UpdateAnimalRequest,
+} from "@/src/types/api";
 
-export type Animal = {
-  id: string;
-  name: string;
-  category: string;
-  age: string;
-  gender: string;
-  city: string;
-  description: string;
-  imageUrl: string | null;
-  images: string[];
-  healthStatus: string;
-  shelterId: string | null;
-  shelterName: string;
-  rating: number;
-};
-
-export type AnimalsPageData = {
-  items: Animal[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-};
-
-export type GetAnimalsParams = {
-  page: number;
-  limit: number;
-  search?: string;
-  category?: string;
-  gender?: string;
-  city?: string;
-};
-
-export type CreateAnimalPayload = {
-  name: string;
-  type: string;
-  age: number;
-  gender: string;
-  shelterId: string;
-  breed?: string;
-  description?: string;
-  healthStatus?: string;
-};
-
-type AnimalApiItem = Partial<{
-  id: string | number;
-  _id: string | number;
-  name: string;
-  type: string;
-  age: string | number;
-  breed: string;
-  healthStatus: string;
-  status: string;
-  gender: string;
-  city: string;
-  description: string;
-  imageUrl: string | null;
-  image: string | null;
-  photoUrl: string | null;
-  images: AnimalApiImage[];
-  shelterId: string;
-  shelter: AnimalApiShelter | null;
-}>;
-
-type AnimalApiImage =
-  | string
-  | null
-  | Partial<{
-      url: string | null;
-      src: string | null;
-      imageUrl: string | null;
-      secureUrl: string | null;
-      path: string | null;
-    }>;
-
-type AnimalApiShelter = Partial<{
-  id: string | number;
-  _id: string | number;
-  name: string | null;
-  title: string | null;
-  city: string | null;
-  location: string | null;
-}>;
-
-type AnimalsApiResponse = Partial<{
-  items: AnimalApiItem[];
-  data: AnimalApiItem[] | AnimalApiItem;
-  item: AnimalApiItem;
-  animal: AnimalApiItem;
-  animals: AnimalApiItem[];
-  pet: AnimalApiItem;
-  pets: AnimalApiItem[];
-  page: number;
-  currentPage: number;
-  limit: number;
-  total: number;
-  totalItems: number;
-  totalCount: number;
-  count: number;
-  totalPages: number;
-  pages: number;
-  lastPage: number;
-  meta: PaginationMeta;
-  pagination: PaginationMeta;
-}>;
-
-type LikedAnimalApiItem = Partial<{
-  userId: string;
-  animalId: string;
-  animal: AnimalApiItem | null;
-  createdAt: string;
-}> &
-  AnimalApiItem;
-
-type LikedAnimalsApiResponse =
-  | LikedAnimalApiItem[]
-  | Partial<{
-      items: LikedAnimalApiItem[];
-      data: LikedAnimalApiItem[];
-      likedAnimals: LikedAnimalApiItem[];
-      animals: AnimalApiItem[];
-      user: {
-        likedAnimals?: unknown[];
-      };
-    }>;
-
-type PaginationMeta = Partial<{
-  page: number;
-  currentPage: number;
-  limit: number;
-  total: number;
-  totalItems: number;
-  totalCount: number;
-  count: number;
-  totalPages: number;
-  pages: number;
-  lastPage: number;
-}>;
+export type { Animal };
+export type AnimalsPageData = ApiPage<Animal>;
+export type GetAnimalsParams = AnimalsQuery;
+export type CreateAnimalPayload = CreateAnimalRequest;
+export type UpdateAnimalPayload = UpdateAnimalRequest;
 
 const ANIMAL_ENDPOINTS = ["/animals", "/pets"] as const;
 
@@ -276,54 +155,63 @@ export async function deleteAnimal(token: string, animalId: string) {
   throw lastError ?? new ApiError("Не знайдено endpoint для видалення.", 404);
 }
 
+export async function updateAnimal(
+  token: string,
+  animalId: string,
+  payload: UpdateAnimalPayload
+) {
+  const requests = [
+    { method: "PATCH", pathname: `/animals/${encodeURIComponent(animalId)}` },
+    { method: "PUT", pathname: `/animals/${encodeURIComponent(animalId)}` },
+  ];
+  let lastRouteError: ApiError | null = null;
+
+  for (const request of requests) {
+    const response = await fetch(createApiUrl(request.pathname), {
+      method: request.method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+      body: JSON.stringify(payload),
+    });
+    const result = await parseCreateAnimalResponse(response);
+
+    if (result.ok) {
+      return result.animal;
+    }
+
+    if (result.error.status === 404) {
+      lastRouteError = result.error;
+      continue;
+    }
+
+    throw result.error;
+  }
+
+  throw (
+    lastRouteError ??
+    new ApiError("Не знайдено endpoint для редагування тварини.", 404)
+  );
+}
+
 export async function createAnimal(
   token: string,
   payload: CreateAnimalPayload,
   image?: File | null
 ) {
-  const endpointCandidates = [
-    `/shelters/${encodeURIComponent(payload.shelterId)}/animals`,
-    `/shelter/${encodeURIComponent(payload.shelterId)}/animals`,
-    "/animals",
-    "/pets",
-  ];
-  let lastRouteError: ApiError | null = null;
+  const result = await requestCreateAnimal(token, "/animals", payload);
 
-  for (const pathname of endpointCandidates) {
-    for (const requestPayload of getCreateAnimalPayloadCandidates(
-      payload,
-      pathname
-    )) {
-      const result = image
-        ? await requestCreateAnimalWithImage(
-            token,
-            pathname,
-            requestPayload,
-            image
-          )
-        : await requestCreateAnimal(token, pathname, requestPayload);
-
-      if (result.ok) {
-        return result.animal;
-      }
-
-      if (
-        result.error.status === 404 ||
-        isUnexpectedUploadFieldError(result.error) ||
-        isValidationFailedError(result.error)
-      ) {
-        lastRouteError = result.error;
-        continue;
-      }
-
-      throw result.error;
-    }
+  if (!result.ok) {
+    throw result.error;
   }
 
-  throw (
-    lastRouteError ??
-    new ApiError("Не знайдено endpoint для створення тварини.", 404)
-  );
+  if (image && result.animal) {
+    return uploadAnimalPhoto(token, result.animal.id, image);
+  }
+
+  return result.animal;
 }
 
 async function requestCreateAnimal(
@@ -344,78 +232,88 @@ async function requestCreateAnimal(
   return parseCreateAnimalResponse(response);
 }
 
-async function requestCreateAnimalWithImage(
+export async function uploadAnimalPhoto(
   token: string,
-  pathname: string,
-  payload: Record<string, string | number>,
+  animalId: string,
   image: File
 ) {
-  const imageFields = ["image", "photo", "file", "images", "photos"];
-  let lastError: ApiError | null = null;
+  const formData = new FormData();
+  formData.set("image", image);
 
-  for (const imageField of imageFields) {
-    const formData = new FormData();
-
-    Object.entries(payload).forEach(([field, value]) => {
-      if (value !== undefined && value !== "") {
-        formData.set(field, String(value));
-      }
-    });
-    formData.set(imageField, image);
-
-    const response = await fetch(createApiUrl(pathname), {
+  const response = await fetch(
+    createApiUrl(`/animals/${encodeURIComponent(animalId)}/images`),
+    {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
       body: formData,
-    });
-    const result = await parseCreateAnimalResponse(response);
-
-    if (result.ok) {
-      return result;
     }
+  );
+  const result = await parseCreateAnimalResponse(response);
 
-    lastError = result.error;
-
-    if (!isUnexpectedUploadFieldError(result.error)) {
-      return result;
-    }
+  if (!result.ok) {
+    throw result.error;
   }
 
-  return {
-    ok: false as const,
-    error:
-      lastError ?? new ApiError("Не вдалося завантажити фото тварини.", 400),
-  };
+  return result.animal ?? (await getAnimal(animalId));
 }
 
-function getCreateAnimalPayloadCandidates(
-  payload: CreateAnimalPayload,
-  pathname: string
-): Record<string, string | number>[] {
-  const { shelterId, ...restPayload } = payload;
-  const isShelterScopedEndpoint =
-    pathname.startsWith("/shelters/") || pathname.startsWith("/shelter/");
-  const shelterPayload = isShelterScopedEndpoint ? {} : { shelterId };
-
-  return [
-    compactCreateAnimalPayload({
-      ...restPayload,
-      ...shelterPayload,
-    }),
-  ];
-}
-
-function compactCreateAnimalPayload(
-  values: Record<string, string | number | undefined>
+export async function deleteAnimalPhoto(
+  token: string,
+  animalId: string,
+  photoUrl: string
 ) {
-  return Object.fromEntries(
-    Object.entries(values).filter(
-      (entry): entry is [string, string | number] =>
-        entry[1] !== undefined && entry[1] !== ""
-    )
+  const requests = [
+    `/animals/${encodeURIComponent(animalId)}/images/${encodeURIComponent(
+      photoUrl
+    )}`,
+    `/animals/${encodeURIComponent(animalId)}/photos/${encodeURIComponent(
+      photoUrl
+    )}`,
+    `/animals/${encodeURIComponent(animalId)}/image/${encodeURIComponent(
+      photoUrl
+    )}`,
+    `/animals/${encodeURIComponent(animalId)}/photo/${encodeURIComponent(
+      photoUrl
+    )}`,
+  ];
+  let lastRouteError: ApiError | null = null;
+
+  for (const pathname of requests) {
+    const response = await fetch(createApiUrl(pathname), {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      return;
+    }
+
+    const responseText = await response.text().catch(() => "");
+    const data = (responseText ? safeParseJson(responseText) : null) as {
+      message?: string | string[];
+    } | null;
+    const error = new ApiError(
+      getAnimalApiErrorMessage(data, "Не вдалося видалити фото тварини."),
+      response.status
+    );
+
+    if (response.status === 404) {
+      lastRouteError = error;
+      continue;
+    }
+
+    throw error;
+  }
+
+  throw (
+    lastRouteError ??
+    new ApiError("Не знайдено endpoint для видалення фото тварини.", 404)
   );
 }
 
@@ -800,14 +698,6 @@ function safeParseJson(value: string) {
   }
 }
 
-function isUnexpectedUploadFieldError(error: ApiError) {
-  return error.message.toLowerCase().includes("unexpected field");
-}
-
-function isValidationFailedError(error: ApiError) {
-  return error.message.toLowerCase().includes("validation failed");
-}
-
 function getAnimalApiErrorMessage(data: unknown, fallbackMessage: string) {
   const message =
     data && typeof data === "object" && "message" in data ? data.message : null;
@@ -876,7 +766,9 @@ function paginateAnimals(
 
 function normalizeAnimal(animal: AnimalApiItem, index: number): Animal {
   const id = animal.id ?? animal._id ?? `animal-${index}`;
+  const categoryCode = normalizeCategoryCode(animal.type);
   const category = normalizeCategory(animal.type);
+  const genderCode = normalizeGenderCode(animal.gender);
   const gender = normalizeGender(animal.gender);
   const images = getAnimalImageUrls(animal);
   const shelterId =
@@ -886,8 +778,11 @@ function normalizeAnimal(animal: AnimalApiItem, index: number): Animal {
     id: String(id),
     name: animal.name ?? "Без імені",
     category,
+    categoryCode,
     age: formatAge(animal.age),
     gender,
+    genderCode,
+    breed: animal.breed ?? "",
     city: animal.shelter?.city ?? animal.city ?? "Місто не вказано",
     description: animal.description ?? "",
     imageUrl: images[0] ?? null,
@@ -974,6 +869,20 @@ function normalizeCategory(value: string | undefined) {
   return value ?? "Тварина";
 }
 
+function normalizeCategoryCode(value: string | undefined) {
+  const normalizedValue = value?.trim().toLocaleUpperCase("uk-UA");
+
+  if (normalizedValue === "CAT" || normalizedValue === "КІТ") {
+    return "CAT";
+  }
+
+  if (normalizedValue === "DOG" || normalizedValue === "СОБАКА") {
+    return "DOG";
+  }
+
+  return normalizedValue ?? "";
+}
+
 function normalizeGender(value: string | undefined) {
   const normalizedValue = value?.trim().toLocaleUpperCase("uk-UA");
 
@@ -986,6 +895,28 @@ function normalizeGender(value: string | undefined) {
   }
 
   return value ?? "Не вказано";
+}
+
+function normalizeGenderCode(value: string | undefined) {
+  const normalizedValue = value?.trim().toLocaleUpperCase("uk-UA");
+
+  if (
+    normalizedValue === "MALE" ||
+    normalizedValue === "САМЕЦЬ" ||
+    normalizedValue === "ХЛОПЧИК"
+  ) {
+    return "MALE";
+  }
+
+  if (
+    normalizedValue === "FEMALE" ||
+    normalizedValue === "САМКА" ||
+    normalizedValue === "ДІВЧИНКА"
+  ) {
+    return "FEMALE";
+  }
+
+  return normalizedValue ?? "";
 }
 
 function normalizeHealthStatus(value: string | undefined) {

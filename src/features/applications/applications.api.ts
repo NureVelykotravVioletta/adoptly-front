@@ -3,56 +3,21 @@ import {
   getAnimal,
   normalizeLikedAnimalsData,
 } from "@/src/features/animals/animals.api";
-import type { Animal } from "@/src/features/animals/animals.api";
+import type {
+  AdoptionApplication,
+  AdoptionApplicationApiItem,
+  AdoptionApplicationApiUser,
+  ApplicationsApiResponse,
+  ApplicationStatus,
+  ApplicationUser,
+  CreateApplicationRequest,
+} from "@/src/types/api";
 
-export type AdoptionApplicationStatus =
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
-  | string;
+export type AdoptionApplicationStatus = ApplicationStatus | string;
+export type { AdoptionApplication };
+export type AdoptionApplicationUser = ApplicationUser;
 
-export type AdoptionApplication = {
-  id: string;
-  message: string | null;
-  status: AdoptionApplicationStatus;
-  userId: string | null;
-  animalId: string;
-  animal: Animal | null;
-  createdAt: string | null;
-  updatedAt: string | null;
-};
-
-type AdoptionApplicationApiItem = Partial<{
-  id: string | number;
-  _id: string | number;
-  message: string | null;
-  status: AdoptionApplicationStatus;
-  userId: string;
-  animalId: string | number;
-  animal: unknown;
-  pet: unknown;
-  createdAt: string;
-  updatedAt: string;
-}>;
-
-type ApplicationsApiResponse =
-  | AdoptionApplicationApiItem[]
-  | Partial<{
-      items: AdoptionApplicationApiItem[];
-      data: AdoptionApplicationApiItem[];
-      applications: AdoptionApplicationApiItem[];
-      adoptionApplications: AdoptionApplicationApiItem[];
-      user: {
-        applications?: unknown[];
-        adoptionApplications?: unknown[];
-      };
-      message: string | string[];
-    }>;
-
-type CreateAdoptionApplicationPayload = {
-  animalId: string;
-  message?: string;
-};
+type CreateAdoptionApplicationPayload = CreateApplicationRequest;
 
 const USER_APPLICATION_ENDPOINTS = [
   "/applications/my",
@@ -151,6 +116,37 @@ export async function getUserApplications(
     lastRouteError ??
     new ApiError("Не знайдено endpoint для отримання заявок.", 404)
   );
+}
+
+export async function getAdminApplications(
+  token: string,
+  status?: AdoptionApplicationStatus | ""
+): Promise<AdoptionApplication[]> {
+  const url = new URL("/applications", getApiBaseUrl());
+
+  if (status) {
+    url.searchParams.set("status", status);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+  const data = (await response
+    .json()
+    .catch(() => null)) as ApplicationsApiResponse | null;
+
+  if (!response.ok) {
+    throw new ApiError(
+      getApplicationApiErrorMessage(data, "Не вдалося отримати заявки."),
+      response.status
+    );
+  }
+
+  return normalizeAdoptionApplicationsData(data);
 }
 
 export async function createAdoptionApplication(
@@ -313,16 +309,37 @@ async function normalizeAdoptionApplicationData(
   const animal =
     normalizedAnimals[0] ??
     (animalId ? await getAnimal(String(animalId)) : null);
+  const user = normalizeApplicationUser(item.user);
 
   return {
     id: String(item.id ?? item._id ?? `application-${index}`),
     message: typeof item.message === "string" ? item.message : null,
     status: item.status ?? "PENDING",
-    userId: item.userId ? String(item.userId) : null,
+    userId: item.userId ? String(item.userId) : (user?.id ?? null),
+    user,
     animalId: animalId ? String(animalId) : (animal?.id ?? ""),
     animal,
     createdAt: typeof item.createdAt === "string" ? item.createdAt : null,
     updatedAt: typeof item.updatedAt === "string" ? item.updatedAt : null,
+  };
+}
+
+function normalizeApplicationUser(
+  value: unknown
+): AdoptionApplicationUser | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const user = value as AdoptionApplicationApiUser;
+  const id = user.id ?? user._id;
+  const name = user.name ?? user.fullName ?? user.email ?? "Користувач";
+  const avatarUrl = user.avatarUrl ?? user.avatar ?? user.imageUrl ?? user.photoUrl;
+
+  return {
+    id: id ? String(id) : "",
+    name,
+    avatarUrl: avatarUrl ?? null,
   };
 }
 

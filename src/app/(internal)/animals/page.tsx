@@ -1,11 +1,13 @@
 import { AnimalsFilters } from "@/src/features/animals/AnimalsFilters";
 import { AnimalsList } from "@/src/features/animals/AnimalsList";
 import { AnimalsPagination } from "@/src/features/animals/AnimalsPagination";
+import { AdminAnimalsList } from "@/src/features/animals/admin/AdminAnimalsList";
 import {
   getAnimals,
   getLikedAnimals,
   normalizeLikedAnimalsData,
 } from "@/src/features/animals/animals.api";
+import { isAdminUser } from "@/src/features/auth/auth.roles";
 import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
 
 const ANIMALS_LIMIT = 6;
@@ -37,14 +39,16 @@ export default async function AnimalsPage({ searchParams }: AnimalsPageProps) {
   });
   const token = await getAuthToken();
   const currentUser = token ? await getCurrentUser() : null;
-  const userLikedAnimals = await normalizeLikedAnimalsData(
-    currentUser?.likedAnimals
-  );
-  const endpointLikedAnimals = token
-    ? await getLikedAnimals(token).catch(() =>
-        normalizeLikedAnimalsData(currentUser?.likedAnimals)
-      )
-    : [];
+  const isAdmin = isAdminUser(currentUser);
+  const userLikedAnimals = isAdmin
+    ? []
+    : await normalizeLikedAnimalsData(currentUser?.likedAnimals);
+  const endpointLikedAnimals =
+    token && !isAdmin
+      ? await getLikedAnimals(token).catch(() =>
+          normalizeLikedAnimalsData(currentUser?.likedAnimals)
+        )
+      : [];
   const likedAnimals =
     endpointLikedAnimals.length > 0 ? endpointLikedAnimals : userLikedAnimals;
   const likedAnimalIds = likedAnimals.map((animal) => animal.id);
@@ -54,7 +58,7 @@ export default async function AnimalsPage({ searchParams }: AnimalsPageProps) {
     <div className="pb-8">
       <div className="mb-10">
         <h1 className="mb-8 text-4xl leading-tight font-bold text-[#262626] sm:text-5xl">
-          Знайдіть свого улюбленця
+          {isAdmin ? "Тварини" : "Знайдіть свого улюбленця"}
         </h1>
         <AnimalsFilters
           key={`${search}-${category}-${gender}-${city}`}
@@ -66,11 +70,15 @@ export default async function AnimalsPage({ searchParams }: AnimalsPageProps) {
       </div>
 
       {animalsPage.items.length > 0 ? (
-        <AnimalsList
-          animals={animalsPage.items}
-          likedAnimalIds={likedAnimalIds}
-          isAuthenticated={isAuthenticated}
-        />
+        isAdmin ? (
+          <AdminAnimalsList animals={animalsPage.items} />
+        ) : (
+          <AnimalsList
+            animals={animalsPage.items}
+            likedAnimalIds={likedAnimalIds}
+            isAuthenticated={isAuthenticated}
+          />
+        )
       ) : (
         <div className="flex min-h-80 items-center justify-center text-center text-base text-[#8E8E8E]">
           Тварин за цими параметрами не знайдено.

@@ -1,66 +1,53 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { LoadingOverlay } from "@/src/components/common/LoadingOverlay";
-import { removeShelterAnimalAction } from "@/src/features/animals/animals.action";
-import { AdminShelterAnimalsSection } from "@/src/features/shelters/admin/edit/AdminShelterAnimalsSection";
-import { AdminShelterConfirmDialog } from "@/src/features/shelters/admin/edit/AdminShelterConfirmDialog";
 import {
-  AdminShelterInfoForm,
-  getChangedInfoValues,
-  getShelterInfoValues,
-  validateShelterInfoValues,
-  type ShelterInfoFieldName,
-  type ShelterInfoTouched,
-  type ShelterInfoValues,
-} from "@/src/features/shelters/admin/edit/AdminShelterInfoForm";
+  deleteAnimalPhotoAction,
+  updateAnimalAction,
+  uploadAnimalPhotoAction,
+} from "@/src/features/animals/animals.action";
+import type { Animal } from "@/src/features/animals/animals.api";
+import {
+  AdminAnimalInfoForm,
+  getAnimalInfoValues,
+  getChangedAnimalInfoValues,
+  validateAnimalInfoValues,
+  type AnimalInfoFieldName,
+  type AnimalInfoTouched,
+  type AnimalInfoValues,
+} from "@/src/features/animals/admin/edit/AdminAnimalInfoForm";
+import { AdminShelterConfirmDialog } from "@/src/features/shelters/admin/edit/AdminShelterConfirmDialog";
 import {
   AdminShelterPhotosSection,
   type PendingShelterPhoto,
 } from "@/src/features/shelters/admin/edit/AdminShelterPhotosSection";
-import {
-  deleteShelterPhotoAction,
-  updateShelterAction,
-  uploadShelterPhotoAction,
-} from "@/src/features/shelters/shelters.action";
-import type { Animal } from "@/src/features/animals/animals.api";
-import type { Shelter } from "@/src/features/shelters/shelters.api";
 
 const tabs = [
   { id: "info", label: "Інформація" },
   { id: "photos", label: "Фото" },
-  { id: "animals", label: "Тварини" },
 ] as const;
 
-type AdminShelterEditTab = (typeof tabs)[number]["id"];
+type AdminAnimalEditTab = (typeof tabs)[number]["id"];
 
-type AdminShelterEditViewProps = {
-  shelter: Shelter;
-  animals: Animal[];
+type AdminAnimalEditViewProps = {
+  animal: Animal;
 };
 
-type ConfirmAction =
-  | { type: "photo"; photoUrl: string }
-  | { type: "animal"; animal: Animal };
+type ConfirmAction = { type: "photo"; photoUrl: string };
 
-export function AdminShelterEditView({
-  shelter,
-  animals,
-}: AdminShelterEditViewProps) {
+export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
   const router = useRouter();
-  const initialInfoValues = useMemo(
-    () => getShelterInfoValues(shelter),
-    [shelter]
-  );
-  const [activeTab, setActiveTab] = useState<AdminShelterEditTab>("info");
+  const initialInfoValues = useMemo(() => getAnimalInfoValues(animal), [animal]);
+  const [activeTab, setActiveTab] = useState<AdminAnimalEditTab>("info");
   const [infoValues, setInfoValues] =
-    useState<ShelterInfoValues>(initialInfoValues);
-  const [touchedFields, setTouchedFields] = useState<ShelterInfoTouched>({});
-  const [existingPhotos, setExistingPhotos] = useState(shelter.images);
+    useState<AnimalInfoValues>(initialInfoValues);
+  const [touchedFields, setTouchedFields] = useState<AnimalInfoTouched>({});
+  const [existingPhotos, setExistingPhotos] = useState(animal.images);
   const [pendingPhotos, setPendingPhotos] = useState<PendingShelterPhoto[]>([]);
-  const [visibleAnimals, setVisibleAnimals] = useState(animals);
   const [error, setError] = useState("");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(
     null
@@ -68,26 +55,36 @@ export function AdminShelterEditView({
   const [confirmError, setConfirmError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const fieldErrors = validateShelterInfoValues(infoValues);
-  const changedInfoValues = getChangedInfoValues(initialInfoValues, infoValues);
+  const fieldErrors = validateAnimalInfoValues(infoValues);
+  const changedInfoValues = getChangedAnimalInfoValues(
+    initialInfoValues,
+    infoValues
+  );
   const hasInfoChanges = Object.keys(changedInfoValues).length > 0;
-  const hasChanges = hasInfoChanges;
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
   function handleInfoChange(
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) {
-    const name = event.target.name as ShelterInfoFieldName;
+    const name = event.target.name as AnimalInfoFieldName;
     const { value } = event.target;
+
+    if (name === "age" && !/^\d*$/.test(value)) {
+      return;
+    }
 
     setInfoValues((currentValues) => ({ ...currentValues, [name]: value }));
     setError("");
   }
 
   function handleInfoBlur(
-    event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: React.FocusEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) {
-    const name = event.target.name as ShelterInfoFieldName;
+    const name = event.target.name as AnimalInfoFieldName;
 
     setTouchedFields((currentFields) => ({
       ...currentFields,
@@ -114,8 +111,8 @@ export function AdminShelterEditView({
         const photoFormData = new FormData();
         photoFormData.set("image", photo.file);
 
-        const uploadResult = await uploadShelterPhotoAction(
-          shelter.id,
+        const uploadResult = await uploadAnimalPhotoAction(
+          animal.id,
           photoFormData
         );
 
@@ -124,8 +121,10 @@ export function AdminShelterEditView({
           return;
         }
 
-        if (uploadResult.shelter) {
-          setExistingPhotos(uploadResult.shelter.images);
+        if (uploadResult.animal) {
+          setExistingPhotos((currentPhotos) =>
+            mergePhotoUrls(currentPhotos, uploadResult.animal?.images ?? [])
+          );
         }
 
         setPendingPhotos((currentPhotos) =>
@@ -143,29 +142,15 @@ export function AdminShelterEditView({
     );
   }
 
-  function handleRemoveAnimal(animalId: string) {
-    const animal = visibleAnimals.find(
-      (currentAnimal) => currentAnimal.id === animalId
-    );
-
-    if (!animal) {
-      return;
-    }
-
-    setConfirmAction({ type: "animal", animal });
-    setError("");
-    setConfirmError("");
-  }
-
   function handleSave() {
-    if (activeTab !== "info" || !hasChanges || hasFieldErrors || isPending) {
+    if (activeTab !== "info" || !hasInfoChanges || hasFieldErrors || isPending) {
       return;
     }
 
     setTouchedFields(
       Object.fromEntries(
         Object.keys(infoValues).map((field) => [field, true])
-      ) as ShelterInfoTouched
+      ) as AnimalInfoTouched
     );
     setError("");
 
@@ -176,7 +161,7 @@ export function AdminShelterEditView({
     });
 
     startTransition(async () => {
-      const updateResult = await updateShelterAction(shelter.id, formData);
+      const updateResult = await updateAnimalAction(animal.id, formData);
 
       if (updateResult.error) {
         setError(updateResult.error);
@@ -195,72 +180,50 @@ export function AdminShelterEditView({
     setConfirmError("");
 
     startTransition(async () => {
-      if (confirmAction.type === "photo") {
-        const result = await deleteShelterPhotoAction(
-          shelter.id,
-          confirmAction.photoUrl
-        );
+      const result = await deleteAnimalPhotoAction(
+        animal.id,
+        confirmAction.photoUrl
+      );
 
-        if (result.error) {
-          setConfirmError(result.error);
-          return;
-        }
-
-        setExistingPhotos((currentPhotos) =>
-          currentPhotos.filter((photo) => photo !== confirmAction.photoUrl)
-        );
-      } else {
-        const result = await removeShelterAnimalAction(
-          shelter.id,
-          confirmAction.animal.id
-        );
-
-        if (result.error) {
-          setConfirmError(result.error);
-          return;
-        }
-
-        setVisibleAnimals((currentAnimals) =>
-          currentAnimals.filter(
-            (animal) => animal.id !== confirmAction.animal.id
-          )
-        );
+      if (result.error) {
+        setConfirmError(result.error);
+        return;
       }
 
+      setExistingPhotos((currentPhotos) =>
+        currentPhotos.filter((photo) => photo !== confirmAction.photoUrl)
+      );
       setConfirmAction(null);
       router.refresh();
     });
   }
-
-  const confirmDialogContent =
-    confirmAction?.type === "photo"
-      ? {
-          title: "Видалити фото?",
-          description:
-            "Фото буде видалено з притулку. Цю дію не можна скасувати.",
-          loadingLabel: "Видалення фото",
-        }
-      : confirmAction?.type === "animal"
-        ? {
-            title: "Прибрати тварину з притулку?",
-            description: `Тварина «${confirmAction.animal.name}» більше не буде прив'язана до цього притулку.`,
-            loadingLabel: "Видалення тварини з притулку",
-          }
-        : null;
 
   return (
     <section className="relative rounded-[44px] bg-white px-6 py-8 text-[#262626] shadow-[0_8px_24px_rgba(38,38,38,0.04)] sm:rounded-[54px] sm:px-10 lg:px-14 lg:py-12">
       <div className="sticky top-24 z-30 -mx-2 mb-6 flex items-start justify-between gap-4 bg-white/95 px-2 py-2 backdrop-blur">
         <div className="min-w-0">
           <h1 className="truncate text-3xl leading-tight font-bold sm:text-4xl">
-            {infoValues.name || shelter.name}
+            {infoValues.name || animal.name}
           </h1>
-          <p className="mt-2 text-sm text-[#8E8E8E]">Редагування притулку</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[#8E8E8E]">
+            <span>Редагування тварини</span>
+            {animal.shelterId ? (
+              <>
+                <span aria-hidden="true">/</span>
+                <Link
+                  href={`/shelters/${encodeURIComponent(animal.shelterId)}/edit`}
+                  className="font-semibold text-[#8456F0] transition hover:text-[#7045D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
+                >
+                  {animal.shelterName}
+                </Link>
+              </>
+            ) : null}
+          </div>
         </div>
         {activeTab === "info" ? (
           <button
             type="button"
-            disabled={!hasChanges || hasFieldErrors || isPending}
+            disabled={!hasInfoChanges || hasFieldErrors || isPending}
             onClick={handleSave}
             className="h-12 shrink-0 cursor-pointer rounded-full bg-[#8456F0] px-7 text-sm font-semibold text-white transition hover:bg-[#7045D1] disabled:cursor-not-allowed disabled:bg-[#DACAFF] disabled:text-[#8456F0] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8456F0]"
           >
@@ -272,7 +235,7 @@ export function AdminShelterEditView({
       <div
         className="sticky top-[168px] z-20 -mx-2 mb-8 flex gap-2 overflow-x-auto bg-white/95 px-2 py-3 backdrop-blur"
         role="tablist"
-        aria-label="Розділи редагування притулку"
+        aria-label="Розділи редагування тварини"
       >
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
@@ -300,7 +263,7 @@ export function AdminShelterEditView({
       {error ? <p className="mb-6 text-sm text-rose-600">{error}</p> : null}
 
       {activeTab === "info" ? (
-        <AdminShelterInfoForm
+        <AdminAnimalInfoForm
           values={infoValues}
           touchedFields={touchedFields}
           fieldErrors={fieldErrors}
@@ -308,8 +271,12 @@ export function AdminShelterEditView({
           onBlur={handleInfoBlur}
         />
       ) : null}
+
       {activeTab === "photos" ? (
         <AdminShelterPhotosSection
+          title="Фото"
+          addButtonLabel="Додати фото"
+          emptyText="Фото тварини поки не додано."
           existingPhotos={existingPhotos}
           pendingPhotos={pendingPhotos}
           onAddPhotos={handleAddPhotos}
@@ -321,37 +288,29 @@ export function AdminShelterEditView({
           onRemovePendingPhoto={handleRemovePendingPhoto}
         />
       ) : null}
-      {activeTab === "animals" ? (
-        <AdminShelterAnimalsSection
-          shelterId={shelter.id}
-          animals={visibleAnimals}
-          onAnimalCreated={(animal) => {
-            setVisibleAnimals((currentAnimals) => [animal, ...currentAnimals]);
-          }}
-          onRemoveAnimal={handleRemoveAnimal}
-        />
-      ) : null}
 
       {isPending && !confirmAction ? (
-        <LoadingOverlay label="Оновлення притулку" />
+        <LoadingOverlay label="Оновлення тварини" />
       ) : null}
 
-      {confirmDialogContent ? (
-        <AdminShelterConfirmDialog
-          isOpen={Boolean(confirmAction)}
-          title={confirmDialogContent.title}
-          description={confirmDialogContent.description}
-          confirmLabel="Видалити"
-          loadingLabel={confirmDialogContent.loadingLabel}
-          error={confirmError}
-          isPending={isPending}
-          onClose={() => {
-            setConfirmAction(null);
-            setConfirmError("");
-          }}
-          onConfirm={handleConfirmAction}
-        />
-      ) : null}
+      <AdminShelterConfirmDialog
+        isOpen={Boolean(confirmAction)}
+        title="Видалити фото?"
+        description="Фото буде видалено з тварини. Цю дію не можна скасувати."
+        confirmLabel="Видалити"
+        loadingLabel="Видалення фото"
+        error={confirmError}
+        isPending={isPending}
+        onClose={() => {
+          setConfirmAction(null);
+          setConfirmError("");
+        }}
+        onConfirm={handleConfirmAction}
+      />
     </section>
   );
+}
+
+function mergePhotoUrls(currentPhotos: string[], uploadedPhotos: string[]) {
+  return Array.from(new Set([...currentPhotos, ...uploadedPhotos]));
 }

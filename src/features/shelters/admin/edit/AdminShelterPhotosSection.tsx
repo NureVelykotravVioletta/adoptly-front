@@ -11,6 +11,9 @@ export type PendingShelterPhoto = {
 type AdminShelterPhotosSectionProps = {
   existingPhotos: string[];
   pendingPhotos: PendingShelterPhoto[];
+  title?: string;
+  addButtonLabel?: string;
+  emptyText?: string;
   onAddPhotos: (files: File[]) => void;
   onRemoveExistingPhoto: (photo: string) => void;
   onRemovePendingPhoto: (photoId: string) => void;
@@ -19,6 +22,9 @@ type AdminShelterPhotosSectionProps = {
 export function AdminShelterPhotosSection({
   existingPhotos,
   pendingPhotos,
+  title = "Фото",
+  addButtonLabel = "Додати фото",
+  emptyText = "Фото притулку поки не додано.",
   onAddPhotos,
   onRemoveExistingPhoto,
   onRemovePendingPhoto,
@@ -51,9 +57,9 @@ export function AdminShelterPhotosSection({
   return (
     <section>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Фото</h2>
+        <h2 className="text-2xl font-bold">{title}</h2>
         <label className="flex h-12 cursor-pointer items-center rounded-full bg-[#8456F0] px-7 text-sm font-semibold text-white transition hover:bg-[#7045D1] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#8456F0]">
-          Додати фото
+          {addButtonLabel}
           <input
             type="file"
             name="photos"
@@ -96,7 +102,7 @@ export function AdminShelterPhotosSection({
         </div>
       ) : (
         <div className="flex min-h-60 items-center justify-center rounded-[28px] bg-[#F7F7F7] px-6 text-center text-sm text-[#8E8E8E]">
-          Фото притулку поки не додано.
+          {emptyText}
         </div>
       )}
     </section>

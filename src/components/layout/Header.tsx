@@ -19,6 +19,7 @@ const userNavItems = [
 const adminNavItems = [
   { href: "/shelters", label: "Притулки" },
   { href: "/animals", label: "Тварини" },
+  { href: "/articles", label: "Поради" },
   { href: "/applications", label: "Заявки" },
 ];
 
@@ -42,7 +43,7 @@ export const Header = ({ variant = "default", user = null }: HeaderProps) => {
 
   return (
     <>
-      <header className="mx-auto w-full px-6 pt-4 sm:px-6 sm:pt-6">
+      <header className="sticky top-0 z-50 mx-auto w-full bg-[#F9F9F9] px-6 pt-4 sm:px-6 sm:pt-6">
         <div
           className={clsx(
             "flex items-center justify-between rounded-t-[30px] rounded-b-none px-5 py-4 md:rounded-t-[60px] lg:px-16 md:px-8",
