@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ApiError, login } from "@/src/features/auth/auth.api";
+import { ApiError } from "@/src/lib/api";
+import { login } from "@/src/features/auth/auth.api";
 import { setAuthSession } from "@/src/features/auth/auth.session";
 import { loginFormSchema } from "@/src/features/auth/login/login.schema";
 import type { LoginActionState } from "@/src/features/auth/login/login.types";

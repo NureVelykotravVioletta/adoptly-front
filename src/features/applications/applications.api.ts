@@ -1,4 +1,9 @@
-import { ApiError, getApiBaseUrl } from "@/src/features/auth/auth.api";
+import {
+  ApiError,
+  getApiBaseUrl,
+  getApiErrorMessage,
+  isRecord,
+} from "@/src/lib/api";
 import {
   getAnimal,
   normalizeLikedAnimalsData,
@@ -19,27 +24,7 @@ export type AdoptionApplicationUser = ApplicationUser;
 
 type CreateAdoptionApplicationPayload = CreateApplicationRequest;
 
-const USER_APPLICATION_ENDPOINTS = [
-  "/applications/my",
-  "/users/me?include=applications",
-  "/users/me?relations=applications",
-  "/users/me",
-  "/auth/me?include=applications",
-  "/auth/me?relations=applications",
-  "/auth/me",
-  "/users/me/applications",
-  "/adoption-applications/me",
-  "/adoption-applications",
-  "/adoption-application/me",
-  "/adoption-application",
-  "/adoption/application/me",
-  "/adoption/applications/me",
-  "/adoption/applications",
-  "/applications/me",
-  "/applications",
-  "/application/me",
-  "/application",
-] as const;
+const USER_APPLICATION_ENDPOINTS = ["/applications/my"] as const;
 
 export async function getUserApplications(
   token: string,
@@ -48,7 +33,7 @@ export async function getUserApplications(
   let lastRouteError: ApiError | null = null;
   let emptyResult: AdoptionApplication[] | null = null;
 
-  for (const pathname of getUserApplicationEndpoints(userId)) {
+  for (const pathname of getUserApplicationEndpoints()) {
     try {
       const response = await fetch(createApiUrl(pathname), {
         method: "GET",
@@ -70,7 +55,7 @@ export async function getUserApplications(
 
       if (!response.ok) {
         const error = new ApiError(
-          getApplicationApiErrorMessage(
+          getApiErrorMessage(
             data,
             "Не вдалося отримати подані заявки."
           ),
@@ -141,7 +126,7 @@ export async function getAdminApplications(
 
   if (!response.ok) {
     throw new ApiError(
-      getApplicationApiErrorMessage(data, "Не вдалося отримати заявки."),
+      getApiErrorMessage(data, "Не вдалося отримати заявки."),
       response.status
     );
   }
@@ -153,93 +138,31 @@ export async function createAdoptionApplication(
   token: string,
   payload: CreateAdoptionApplicationPayload
 ) {
-  const requests = [
-    {
-      pathname: "/adoption-applications",
-      body: { animalId: payload.animalId, message: payload.message },
+  const response = await fetch(createApiUrl("/applications"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    {
-      pathname: "/adoption-application",
-      body: { animalId: payload.animalId, message: payload.message },
-    },
-    {
-      pathname: "/adoption/applications",
-      body: { animalId: payload.animalId, message: payload.message },
-    },
-    {
-      pathname: "/applications",
-      body: { animalId: payload.animalId, message: payload.message },
-    },
-    {
-      pathname: "/application",
-      body: { animalId: payload.animalId, message: payload.message },
-    },
-    {
-      pathname: "/users/me/applications",
-      body: { animalId: payload.animalId, message: payload.message },
-    },
-    {
-      pathname: `/animals/${encodeURIComponent(payload.animalId)}/applications`,
-      body: { message: payload.message },
-    },
-    {
-      pathname: `/pets/${encodeURIComponent(payload.animalId)}/applications`,
-      body: { message: payload.message },
-    },
-  ];
-  let lastRouteError: ApiError | null = null;
+    cache: "no-store",
+    body: JSON.stringify({
+      animalId: payload.animalId,
+      message: payload.message,
+    }),
+  });
 
-  for (const request of requests) {
-    try {
-      const response = await fetch(createApiUrl(request.pathname), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-        body: JSON.stringify(request.body),
-      });
+  const data = (await response
+    .json()
+    .catch(() => null)) as ApplicationsApiResponse | null;
 
-      const data = (await response
-        .json()
-        .catch(() => null)) as ApplicationsApiResponse | null;
-
-      console.log("[applications] POST response", {
-        endpoint: request.pathname,
-        status: response.status,
-        data,
-      });
-
-      if (!response.ok) {
-        const error = new ApiError(
-          getApplicationApiErrorMessage(data, "Не вдалося подати заявку."),
-          response.status
-        );
-
-        if (isRouteNotFoundError(error)) {
-          lastRouteError = error;
-          continue;
-        }
-
-        throw error;
-      }
-
-      return normalizeAdoptionApplicationData(data, payload.animalId);
-    } catch (error) {
-      if (error instanceof ApiError && isRouteNotFoundError(error)) {
-        lastRouteError = error;
-        continue;
-      }
-
-      throw error;
-    }
+  if (!response.ok) {
+    throw new ApiError(
+      getApiErrorMessage(data, "Не вдалося подати заявку."),
+      response.status,
+    );
   }
 
-  throw (
-    lastRouteError ??
-    new ApiError("Не знайдено endpoint для подачі заявки.", 404)
-  );
+  return normalizeAdoptionApplicationData(data, payload.animalId);
 }
 
 export async function updateAdoptionApplicationStatus(
@@ -265,7 +188,7 @@ export async function updateAdoptionApplicationStatus(
 
   if (!response.ok) {
     throw new ApiError(
-      getApplicationApiErrorMessage(data, "Не вдалося оновити статус заявки."),
+      getApiErrorMessage(data, "Не вдалося оновити статус заявки."),
       response.status
     );
   }
@@ -426,50 +349,10 @@ function createApiUrl(pathname: string) {
   return new URL(pathname, getApiBaseUrl()).toString();
 }
 
-function getUserApplicationEndpoints(userId?: string) {
-  if (!userId) {
-    return [...USER_APPLICATION_ENDPOINTS];
-  }
-
-  const encodedUserId = encodeURIComponent(userId);
-  const userScopedEndpoints = [
-    `/users/${encodedUserId}/applications`,
-    `/users/${encodedUserId}/adoption-applications`,
-    `/users/${encodedUserId}/adoption-application`,
-    `/adoption-applications/user/${encodedUserId}`,
-    `/adoption-application/user/${encodedUserId}`,
-    `/adoption/applications/user/${encodedUserId}`,
-    `/applications/user/${encodedUserId}`,
-    `/application/user/${encodedUserId}`,
-    `/adoption-applications?userId=${encodedUserId}`,
-    `/adoption-application?userId=${encodedUserId}`,
-    `/adoption/applications?userId=${encodedUserId}`,
-    `/applications?userId=${encodedUserId}`,
-    `/application?userId=${encodedUserId}`,
-  ];
-
-  return [...USER_APPLICATION_ENDPOINTS, ...userScopedEndpoints];
-}
-
-function getApplicationApiErrorMessage(data: unknown, fallbackMessage: string) {
-  const message =
-    data && typeof data === "object" && "message" in data ? data.message : null;
-
-  if (typeof message === "string" && message.length > 0) {
-    return message;
-  }
-
-  if (Array.isArray(message) && message.length > 0) {
-    return message.join(", ");
-  }
-
-  return fallbackMessage;
+function getUserApplicationEndpoints() {
+  return USER_APPLICATION_ENDPOINTS;
 }
 
 function isRouteNotFoundError(error: ApiError) {
   return error.status === 404 || error.status === 405;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

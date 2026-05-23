@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError } from "@/src/features/auth/auth.api";
-import { isAdminUser } from "@/src/features/auth/auth.roles";
-import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
+import { ApiError } from "@/src/lib/api";
+import { requireAdmin } from "@/src/lib/action-utils";
 import {
   updateAdoptionApplicationStatus,
   type AdoptionApplication,
@@ -19,12 +18,13 @@ export async function updateApplicationStatusAction(
   applicationId: string,
   status: AdoptionApplicationStatus
 ): Promise<UpdateApplicationStatusActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для зміни статусу заявки." };
   }
+
+  const { token } = auth;
 
   try {
     const application = await updateAdoptionApplicationStatus(

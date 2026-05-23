@@ -1,4 +1,11 @@
-import { ApiError, getApiBaseUrl } from "@/src/features/auth/auth.api";
+import {
+  ApiError,
+  getApiBaseUrl,
+  getApiErrorMessage,
+  isRecord,
+  safeParseJson,
+} from "@/src/lib/api";
+import { buildPage, extractPageMeta } from "@/src/lib/pagination";
 import type {
   ApiPage,
   Article,
@@ -82,7 +89,7 @@ export async function updateArticle(
         message?: string | string[];
       } | null;
       lastRouteError = new ApiError(
-        getArticleApiErrorMessage(data, "Не знайдено endpoint для редагування статті."),
+        getApiErrorMessage(data, "Не знайдено endpoint для редагування статті."),
         response.status,
       );
       continue;
@@ -164,7 +171,7 @@ export async function deleteArticle(token: string, articleId: string) {
 
   if (!response.ok) {
     throw new ApiError(
-      getArticleApiErrorMessage(data, "Не вдалося видалити статтю."),
+      getApiErrorMessage(data, "Не вдалося видалити статтю."),
       response.status,
     );
   }
@@ -183,7 +190,7 @@ async function parseArticleMutationResponse(
 
   if (!response.ok) {
     throw new ApiError(
-      getArticleApiErrorMessage(data, fallbackMessage),
+      getApiErrorMessage(data, fallbackMessage),
       response.status,
     );
   }
@@ -269,49 +276,9 @@ function normalizeArticlesPage(
 
   const apiItems =
     data?.items ?? getArticleApiItemArray(data?.data) ?? data?.articles ?? [];
-  const meta = data?.meta;
-  const pagination = data?.pagination;
-  const total =
-    data?.total ??
-    data?.totalItems ??
-    data?.totalCount ??
-    data?.count ??
-    meta?.total ??
-    meta?.totalItems ??
-    meta?.totalCount ??
-    meta?.count ??
-    pagination?.total ??
-    pagination?.totalItems ??
-    pagination?.totalCount ??
-    pagination?.count;
-  const page =
-    data?.page ??
-    data?.currentPage ??
-    meta?.page ??
-    meta?.currentPage ??
-    pagination?.page ??
-    pagination?.currentPage ??
-    fallbackPage;
-  const limit = data?.limit ?? meta?.limit ?? pagination?.limit ?? fallbackLimit;
-  const totalPages =
-    data?.totalPages ??
-    data?.pages ??
-    data?.lastPage ??
-    meta?.totalPages ??
-    meta?.pages ??
-    meta?.lastPage ??
-    pagination?.totalPages ??
-    pagination?.pages ??
-    pagination?.lastPage ??
-    Math.max(1, Math.ceil((total ?? apiItems.length) / limit));
+  const meta = extractPageMeta(data ?? {}, fallbackPage, fallbackLimit);
 
-  return {
-    items: apiItems.map(normalizeArticle),
-    page,
-    limit,
-    total: total ?? apiItems.length,
-    totalPages,
-  };
+  return buildPage(apiItems.map(normalizeArticle), apiItems, meta);
 }
 
 function normalizeArticleDetails(
@@ -382,29 +349,3 @@ function isArticlesApiResponse(
   );
 }
 
-function getArticleApiErrorMessage(data: unknown, fallbackMessage: string) {
-  const message =
-    data && typeof data === "object" && "message" in data ? data.message : null;
-
-  if (typeof message === "string" && message.length > 0) {
-    return message;
-  }
-
-  if (Array.isArray(message) && message.length > 0) {
-    return message.join(", ");
-  }
-
-  return fallbackMessage;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function safeParseJson(value: string) {
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return null;
-  }
-}

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError } from "@/src/features/auth/auth.api";
+import { ApiError } from "@/src/lib/api";
 import { getAuthToken } from "@/src/features/auth/auth.session";
 import { setLikedAnimal } from "@/src/features/animals/animals.api";
 

@@ -177,12 +177,16 @@ export type ApiImage = Partial<{
   path: string | null;
 }>;
 
+export type ApiCityRef = { id?: ApiId; name?: string } | string;
+
+export type ApiBreedRef = { id?: ApiId; name?: string } | string | null;
+
 export type AnimalShelterResponse = Partial<{
   id: ApiId;
   _id: ApiId;
   name: string;
   title: string;
-  city: string;
+  city: ApiCityRef;
   location: string;
 }>;
 
@@ -193,9 +197,9 @@ export type AnimalResponse = PrismaTimestamps &
     name: string;
     type: AnimalType | string;
     gender: AnimalGender | string;
-    city: string;
+    city: ApiCityRef;
     age: number | string;
-    breed: string;
+    breed: ApiBreedRef;
     healthStatus: string;
     description: string;
     status: AnimalStatus | string;
@@ -341,7 +345,7 @@ export type ShelterResponse = PrismaTimestamps &
     title: string;
     description: string;
     about: string;
-    city: string;
+    city: ApiCityRef;
     location: string;
     address: string;
     phone: string;

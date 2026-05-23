@@ -125,7 +125,15 @@ export function AdminShelterEditView({
         }
 
         if (uploadResult.shelter) {
-          setExistingPhotos(uploadResult.shelter.images);
+          setExistingPhotos((currentPhotos) => {
+            const merged = [...currentPhotos];
+            for (const img of uploadResult.shelter!.images) {
+              if (!merged.includes(img)) {
+                merged.push(img);
+              }
+            }
+            return merged;
+          });
         }
 
         setPendingPhotos((currentPhotos) =>

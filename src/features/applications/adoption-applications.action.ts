@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError } from "@/src/features/auth/auth.api";
+import { ApiError } from "@/src/lib/api";
+import { getStringValue } from "@/src/lib/action-utils";
 import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
 import { createAdoptionApplication } from "@/src/features/applications/applications.api";
 import { addLocalAdoptionApplication } from "@/src/features/applications/applications.session";
@@ -27,8 +28,8 @@ export async function submitAdoptionApplicationAction(
     return { error: "Потрібно увійти в акаунт, щоб подати заявку." };
   }
 
-  const animalId = getRequiredStringValue(formData, "animalId");
-  const message = getOptionalStringValue(formData, "message");
+  const animalId = getStringValue(formData, "animalId");
+  const message = getStringValue(formData, "message");
 
   if (!animalId) {
     return { error: "Не вдалося визначити тварину для заявки." };
@@ -37,6 +38,8 @@ export async function submitAdoptionApplicationAction(
   if (message && message.length > 1000) {
     return { error: "Повідомлення має бути не довше 1000 символів." };
   }
+
+  console.log("[adoption] submitting", { animalId, message });
 
   try {
     const application = await createAdoptionApplication(token, {
@@ -60,18 +63,6 @@ export async function submitAdoptionApplicationAction(
 
     return { error: "Сталася непередбачена помилка. Спробуйте ще раз." };
   }
-}
-
-function getRequiredStringValue(formData: FormData, field: string) {
-  const value = formData.get(field);
-
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function getOptionalStringValue(formData: FormData, field: string) {
-  const value = formData.get(field);
-
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function createLocalApplication({

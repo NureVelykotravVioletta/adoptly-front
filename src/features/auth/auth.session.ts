@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ApiError, getMe } from "@/src/features/auth/auth.api";
+import { ApiError } from "@/src/lib/api";
+import { getMe } from "@/src/features/auth/auth.api";
 import type { AuthResponse, AuthUser } from "@/src/features/auth/auth.api";
 
 const AUTH_TOKEN_COOKIE = "auth_token";

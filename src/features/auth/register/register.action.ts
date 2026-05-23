@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ApiError, register } from "@/src/features/auth/auth.api";
+import { ApiError } from "@/src/lib/api";
+import { register } from "@/src/features/auth/auth.api";
 import { setAuthSession } from "@/src/features/auth/auth.session";
 import { registerFormSchema } from "@/src/features/auth/register/register.schema";
 import type { RegisterActionState } from "@/src/features/auth/register/register.types";

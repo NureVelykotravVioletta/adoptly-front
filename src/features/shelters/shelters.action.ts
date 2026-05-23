@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError } from "@/src/features/auth/auth.api";
-import { isAdminUser } from "@/src/features/auth/auth.roles";
-import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
+import { ApiError } from "@/src/lib/api";
+import {
+  getOptionalStringValue,
+  requireAdmin,
+  validateImageFile,
+} from "@/src/lib/action-utils";
 import {
   createShelter,
   deleteShelter,
@@ -42,17 +45,16 @@ export type DeleteShelterPhotoActionState = {
   error?: string;
 };
 
-const MAX_SHELTER_PHOTO_SIZE = 5 * 1024 * 1024;
-
 export async function deleteShelterAction(
   shelterId: string
 ): Promise<DeleteShelterActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для видалення притулку." };
   }
+
+  const { token } = auth;
 
   try {
     await deleteShelter(token, shelterId);
@@ -74,12 +76,13 @@ export async function deleteShelterAction(
 export async function createShelterAction(
   formData: FormData
 ): Promise<CreateShelterActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для створення притулку." };
   }
+
+  const { token } = auth;
 
   const payload = getCreateShelterPayload(formData);
 
@@ -107,12 +110,13 @@ export async function updateShelterAction(
   shelterId: string,
   formData: FormData
 ): Promise<UpdateShelterActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для редагування притулку." };
   }
+
+  const { token } = auth;
 
   const payload = getUpdateShelterPayload(formData);
 
@@ -145,34 +149,25 @@ export async function uploadShelterPhotoAction(
   shelterId: string,
   formData: FormData
 ): Promise<UploadShelterPhotoActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для додавання фото притулку." };
   }
 
-  const file =
-    formData.get("image") ??
-    formData.get("photo") ??
-    formData.get("file") ??
-    formData.get("photos") ??
-    formData.get("images");
+  const { token } = auth;
+  const image = validateImageFile(formData);
 
-  if (!(file instanceof File) || file.size === 0) {
+  if ("error" in image) {
+    return { error: image.error };
+  }
+
+  if (!image.file) {
     return { error: "Оберіть фото для завантаження." };
   }
 
-  if (!file.type.startsWith("image/")) {
-    return { error: "Файл має бути зображенням." };
-  }
-
-  if (file.size > MAX_SHELTER_PHOTO_SIZE) {
-    return { error: "Фото має бути не більше 5MB." };
-  }
-
   try {
-    const shelter = await uploadShelterPhoto(token, shelterId, file);
+    const shelter = await uploadShelterPhoto(token, shelterId, image.file);
 
     revalidatePath("/shelters");
     revalidatePath(`/shelters/${shelterId}`);
@@ -193,12 +188,13 @@ export async function deleteShelterPhotoAction(
   shelterId: string,
   photoUrl: string
 ): Promise<DeleteShelterPhotoActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для видалення фото притулку." };
   }
+
+  const { token } = auth;
 
   if (!photoUrl.trim()) {
     return { error: "Не вдалося визначити фото для видалення." };
@@ -316,8 +312,3 @@ function getUpdateShelterPayload(
   return { data: payload };
 }
 
-function getOptionalStringValue(formData: FormData, field: string) {
-  const value = formData.get(field);
-
-  return typeof value === "string" ? value.trim() : null;
-}

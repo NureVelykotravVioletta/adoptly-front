@@ -2,8 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ApiError } from "@/src/lib/api";
 import {
-  ApiError,
+  getOptionalStringValue,
+  validateImageFile,
+} from "@/src/lib/action-utils";
+import {
   updateProfile,
   uploadAvatar,
 } from "@/src/features/auth/auth.api";
@@ -22,8 +26,6 @@ export type UpdateProfileActionState = {
   error?: string;
 };
 
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
-
 export async function logoutAction() {
   await clearAuthSession();
 
@@ -39,26 +41,18 @@ export async function uploadAvatarAction(
     return { error: "Потрібно увійти в акаунт." };
   }
 
-  const file =
-    formData.get("image") ??
-    formData.get("avatarUrl") ??
-    formData.get("file") ??
-    formData.get("avatar");
+  const image = validateImageFile(formData);
 
-  if (!(file instanceof File) || file.size === 0) {
+  if ("error" in image) {
+    return { error: image.error };
+  }
+
+  if (!image.file) {
     return { error: "Оберіть фото для завантаження." };
   }
 
-  if (!file.type.startsWith("image/")) {
-    return { error: "Файл має бути зображенням." };
-  }
-
-  if (file.size > MAX_AVATAR_SIZE) {
-    return { error: "Фото має бути не більше 5MB." };
-  }
-
   try {
-    const result = await uploadAvatar(token, file);
+    const result = await uploadAvatar(token, image.file);
 
     revalidatePath("/profile");
 
@@ -124,8 +118,3 @@ export async function updateProfileAction(
   }
 }
 
-function getOptionalStringValue(formData: FormData, field: string) {
-  const value = formData.get(field);
-
-  return typeof value === "string" ? value.trim() : null;
-}

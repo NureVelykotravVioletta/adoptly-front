@@ -1,3 +1,9 @@
+import {
+  ApiError,
+  createApiUrl,
+  getApiErrorMessage,
+  safeParseJson,
+} from "@/src/lib/api";
 import type {
   ApiUser,
   AuthResponse,
@@ -11,30 +17,6 @@ export type LoginPayload = LoginRequest;
 export type UpdateProfilePayload = UpdateProfileRequest;
 export type AuthUser = ApiUser;
 export type { AuthResponse };
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-const DEFAULT_API_BASE_URL = "http://localhost:5001";
-
-export function getApiBaseUrl() {
-  return (
-    process.env.API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    DEFAULT_API_BASE_URL
-  );
-}
-
-function createApiUrl(pathname: string) {
-  return new URL(pathname, getApiBaseUrl()).toString();
-}
 
 export async function register(payload: RegisterPayload) {
   const response = await fetch(createApiUrl("/auth/register"), {
@@ -80,6 +62,31 @@ export async function login(payload: LoginPayload) {
     throw new ApiError(
       data?.message ?? "Не вдалося виконати вхід",
       response.status
+    );
+  }
+
+  return data as AuthResponse;
+}
+
+export async function googleLogin(idToken: string) {
+  const response = await fetch(createApiUrl("/auth/google"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({ idToken }),
+  });
+
+  const data = (await response.json().catch(() => null)) as
+    | AuthResponse
+    | { message?: string }
+    | null;
+
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message ?? "Не вдалося увійти через Google",
+      response.status,
     );
   }
 
@@ -192,12 +199,10 @@ async function requestUpdateProfile(
     | null;
 
   if (!response.ok) {
-    const errorMessage = getApiErrorMessage(
-      data,
+    const errorMessage = getApiErrorMessage(data, "Не вдалося зберегти зміни.", {
       responseText,
-      response.status,
-      "Не вдалося зберегти зміни."
-    );
+      status: response.status,
+    });
 
     throw new ApiError(errorMessage, response.status);
   }
@@ -230,13 +235,11 @@ export async function uploadAvatar(token: string, file: File) {
 
   if (!response.ok) {
     throw new ApiError(
-      getApiErrorMessage(
-        data,
+      getApiErrorMessage(data, "Не вдалося завантажити фото.", {
         responseText,
-        response.status,
-        "Не вдалося завантажити фото."
-      ),
-      response.status
+        status: response.status,
+      }),
+      response.status,
     );
   }
 
@@ -249,46 +252,6 @@ export async function uploadAvatar(token: string, file: File) {
   }
 
   throw new ApiError("Бекенд не повернув посилання на фото", response.status);
-}
-
-function safeParseJson(value: string) {
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return null;
-  }
-}
-
-function getApiErrorMessage(
-  data: unknown,
-  responseText: string,
-  status: number,
-  fallbackMessage: string
-) {
-  const message =
-    data && typeof data === "object" && "message" in data ? data.message : null;
-
-  if (typeof message === "string" && message.length > 0) {
-    return message;
-  }
-
-  if (Array.isArray(message) && message.length > 0) {
-    return message.join(", ");
-  }
-
-  if (
-    responseText.length > 0 &&
-    responseText.length < 160 &&
-    !isHtmlResponse(responseText)
-  ) {
-    return responseText;
-  }
-
-  return `${fallbackMessage} Статус відповіді: ${status}.`;
-}
-
-function isHtmlResponse(responseText: string) {
-  return /<(!doctype|html|head|body|pre)\b/i.test(responseText);
 }
 
 function isRouteNotFoundError(error: ApiError) {

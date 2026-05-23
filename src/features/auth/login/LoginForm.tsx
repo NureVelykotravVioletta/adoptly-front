@@ -15,6 +15,7 @@ import CrossIcon from "@/src/assets/icons/CrossIcon.svg";
 import LoginImage from "@/src/assets/images/LoginImage.png";
 import LoginImageMobile from "@/src/assets/images/LoginImageMobile.png";
 import LoginImageTablet from "@/src/assets/images/LoginImageTablet.png";
+import { GoogleAuthButton } from "@/src/features/auth/google/GoogleAuthButton";
 import {
   type LoginFieldName,
   initialLoginActionState,
@@ -195,6 +196,8 @@ export function LoginForm() {
                 </div>
               ) : null}
               <SubmitButton />
+              <GoogleAuthButton />
+
               <p className="mt-4 text-center text-[14px] text-[rgba(38,38,38,0.8)]">
                 Ще не маєте акаунту?{" "}
                 <Link

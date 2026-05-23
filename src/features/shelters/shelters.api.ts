@@ -1,4 +1,13 @@
-import { ApiError, getApiBaseUrl } from "@/src/features/auth/auth.api";
+import {
+  ApiError,
+  getApiBaseUrl,
+  getApiErrorMessage,
+  isRecord,
+  normalizeImageUrl,
+  safeParseJson,
+} from "@/src/lib/api";
+import { buildPage, extractPageMeta, paginate } from "@/src/lib/pagination";
+import { FALLBACK_SHELTERS } from "@/src/features/shelters/shelters.fallback";
 import type {
   ApiPage,
   CreateShelterRequest,
@@ -116,11 +125,9 @@ export async function createShelter(
 
     if (!response.ok) {
       const error = new ApiError(
-        getShelterApiErrorMessage(
-          data,
-          responseText,
-          "Не вдалося створити притулок."
-        ),
+        getApiErrorMessage(data, "Не вдалося створити притулок.", {
+            responseText,
+          }),
         response.status
       );
 
@@ -208,11 +215,9 @@ async function requestUpdateShelter(
 
   if (!response.ok) {
     throw new ApiError(
-      getShelterApiErrorMessage(
-        data,
+      getApiErrorMessage(data, "Не вдалося зберегти зміни притулку.", {
         responseText,
-        "Не вдалося зберегти зміни притулку."
-      ),
+      }),
       response.status
     );
   }
@@ -271,11 +276,9 @@ export async function uploadShelterPhoto(
 
       if (!response.ok) {
         const error = new ApiError(
-          getShelterApiErrorMessage(
-            data,
-            responseText,
-            "Не вдалося завантажити фото притулку."
-          ),
+          getApiErrorMessage(data, "Не вдалося завантажити фото притулку.", {
+              responseText,
+            }),
           response.status
         );
 
@@ -339,11 +342,9 @@ export async function deleteShelterPhoto(
   } | null;
 
   throw new ApiError(
-    getShelterApiErrorMessage(
-      data,
+    getApiErrorMessage(data, "Не вдалося видалити фото притулку.", {
       responseText,
-      "Не вдалося видалити фото притулку."
-    ),
+    }),
     response.status
   );
 }
@@ -431,57 +432,13 @@ function normalizeSheltersPage(
   }
 
   if (Array.isArray(data)) {
-    return paginateShelters(
-      data.map(normalizeShelter),
-      fallbackPage,
-      fallbackLimit
-    );
+    return paginate(data.map(normalizeShelter), fallbackPage, fallbackLimit);
   }
 
   const apiItems = data.items ?? data.data ?? data.shelters ?? [];
-  const meta = data.meta;
-  const pagination = data.pagination;
-  const total =
-    data.total ??
-    data.totalItems ??
-    data.totalCount ??
-    data.count ??
-    meta?.total ??
-    meta?.totalItems ??
-    meta?.totalCount ??
-    meta?.count ??
-    pagination?.total ??
-    pagination?.totalItems ??
-    pagination?.totalCount ??
-    pagination?.count;
-  const page =
-    data.page ??
-    data.currentPage ??
-    meta?.page ??
-    meta?.currentPage ??
-    pagination?.page ??
-    pagination?.currentPage ??
-    fallbackPage;
-  const limit = data.limit ?? meta?.limit ?? pagination?.limit ?? fallbackLimit;
-  const totalPages =
-    data.totalPages ??
-    data.pages ??
-    data.lastPage ??
-    meta?.totalPages ??
-    meta?.pages ??
-    meta?.lastPage ??
-    pagination?.totalPages ??
-    pagination?.pages ??
-    pagination?.lastPage ??
-    Math.max(1, Math.ceil((total ?? apiItems.length) / limit));
+  const meta = extractPageMeta(data, fallbackPage, fallbackLimit);
 
-  return {
-    items: apiItems.map(normalizeShelter),
-    page,
-    limit,
-    total: total ?? apiItems.length,
-    totalPages,
-  };
+  return buildPage(apiItems.map(normalizeShelter), apiItems, meta);
 }
 
 function getFallbackShelters(params: GetSheltersParams) {
@@ -497,25 +454,7 @@ function getFallbackShelters(params: GetSheltersParams) {
     return matchesSearch && matchesCity;
   });
 
-  return paginateShelters(filtered, params.page, params.limit);
-}
-
-function paginateShelters(
-  shelters: Shelter[],
-  page: number,
-  limit: number
-): SheltersPageData {
-  const totalPages = Math.max(1, Math.ceil(shelters.length / limit));
-  const normalizedPage = Math.min(page, totalPages);
-  const start = (normalizedPage - 1) * limit;
-
-  return {
-    items: shelters.slice(start, start + limit),
-    page: normalizedPage,
-    limit,
-    total: shelters.length,
-    totalPages,
-  };
+  return paginate(filtered, params.page, params.limit);
 }
 
 function normalizeShelter(shelter: ShelterApiItem, index = 0): Shelter {
@@ -535,7 +474,8 @@ function normalizeShelter(shelter: ShelterApiItem, index = 0): Shelter {
     id: String(id),
     name: shelter.name ?? shelter.title ?? "Без назви",
     city:
-      shelter.city ?? shelter.location ?? shelter.address ?? "Місто не вказано",
+      normalizeCityRef(shelter.city) ||
+      (shelter.location ?? shelter.address ?? "Місто не вказано"),
     address: shelter.address ?? "",
     description: shelter.description ?? shelter.about ?? "",
     imageUrl: images[0] ?? null,
@@ -594,22 +534,6 @@ function getRawShelterImageUrls(images: ShelterApiImage[] | undefined) {
     .filter((url): url is string => Boolean(url));
 }
 
-function normalizeImageUrl(url: string | null | undefined) {
-  if (!url) {
-    return null;
-  }
-
-  if (/^(https?:|data:|blob:)/.test(url)) {
-    return url;
-  }
-
-  if (url.startsWith("/")) {
-    return new URL(url, getApiBaseUrl()).toString();
-  }
-
-  return url;
-}
-
 function formatFoundedAt(value: string | number | undefined) {
   if (!value) {
     return "";
@@ -623,42 +547,18 @@ function formatFoundedAt(value: string | number | undefined) {
   return Number.isNaN(year) ? value : String(year);
 }
 
-function safeParseJson(value: string) {
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return null;
-  }
-}
-
-function getShelterApiErrorMessage(
-  data: unknown,
-  responseText: string,
-  fallback: string
-) {
-  if (isRecord(data)) {
-    const message = data.message;
-
-    if (typeof message === "string" && message.trim().length > 0) {
-      return message;
-    }
-
-    if (Array.isArray(message)) {
-      const joinedMessage = message
-        .filter((item): item is string => typeof item === "string")
-        .join(" ");
-
-      if (joinedMessage.length > 0) {
-        return joinedMessage;
-      }
-    }
+function normalizeCityRef(
+  value: string | { name?: string } | null | undefined,
+): string {
+  if (!value) {
+    return "";
   }
 
-  if (responseText.trim().length > 0) {
-    return responseText;
+  if (typeof value === "string") {
+    return value;
   }
 
-  return fallback;
+  return value.name ?? "";
 }
 
 function isShelterDetailsResponse(
@@ -684,125 +584,3 @@ function isShelterItemRecord(
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-const FALLBACK_SHELTERS: Shelter[] = [
-  {
-    id: "hvostyky",
-    name: "Дім Хвостиків",
-    city: "Київ",
-    address: "вул. Добра, 12",
-    description:
-      "Затишний притулок для котів і собак, де кожна тварина отримує турботу та увагу.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=720&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1581888227599-779811939961?auto=format&fit=crop&w=900&q=80",
-    ],
-    animalsCount: 32,
-    rating: 2,
-    phone: "0965433456",
-    email: "dim.hvostykiv@gmail.com",
-    workingHours: "Пн-Сб 8:00-18:00",
-    foundedAt: "2018",
-  },
-  {
-    id: "lapky-nadii",
-    name: "Лапки Надії",
-    city: "Львів",
-    address: "вул. Надії, 8",
-    description:
-      "Притулок, що спеціалізується на порятунку покинутих та травмованих тварин.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=720&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=900&q=80",
-    ],
-    animalsCount: 18,
-    rating: 6,
-    phone: "0671234567",
-    email: "lapky.nadii@gmail.com",
-    workingHours: "Пн-Пт 9:00-18:00",
-    foundedAt: "2020",
-  },
-  {
-    id: "druhe-zhyttia",
-    name: "Друге Життя",
-    city: "Харків",
-    address: "просп. Турботи, 4",
-    description:
-      "Тут тварини отримують шанс почати все знову. Команда волонтерів дбає про здоров'я та адаптацію.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1551730459-92db2a308d6a?auto=format&fit=crop&w=720&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1551730459-92db2a308d6a?auto=format&fit=crop&w=900&q=80",
-    ],
-    animalsCount: 27,
-    rating: 11,
-    phone: "0507654321",
-    email: "druhe.zhyttia@gmail.com",
-    workingHours: "Пн-Сб 8:00-18:00",
-    foundedAt: "2018",
-  },
-  {
-    id: "tepli-lapy",
-    name: "Теплі Лапи",
-    city: "Одеса",
-    address: "вул. Морська, 21",
-    description:
-      "Невеликий, але дуже дружній притулок, де кожна тварина має свою історію та підтримку.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1563460716037-460a3ad24ba9?auto=format&fit=crop&w=720&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1563460716037-460a3ad24ba9?auto=format&fit=crop&w=900&q=80",
-    ],
-    animalsCount: 18,
-    rating: 4,
-    phone: "0931112233",
-    email: "tepli.lapy@gmail.com",
-    workingHours: "Щодня 10:00-17:00",
-    foundedAt: "2019",
-  },
-  {
-    id: "virnyi-druh",
-    name: "Вірний Друг",
-    city: "Дніпро",
-    address: "вул. Дружби, 15",
-    description:
-      "Притулок для собак, які залишилися без дому. Тут їх готують до життя в сім'ї.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1581888227599-779811939961?auto=format&fit=crop&w=720&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1581888227599-779811939961?auto=format&fit=crop&w=900&q=80",
-    ],
-    animalsCount: 31,
-    rating: 23,
-    phone: "0972223344",
-    email: "virnyi.druh@gmail.com",
-    workingHours: "Пн-Пт 9:00-18:00",
-    foundedAt: "2017",
-  },
-  {
-    id: "kotiachyi-svit",
-    name: "Котячий Світ",
-    city: "Вінниця",
-    address: "вул. Котяча, 6",
-    description:
-      "Притулок, що опікується котами різного віку. Особлива увага приділяється комфортному утриманню.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=720&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80",
-    ],
-    animalsCount: 26,
-    rating: 1,
-    phone: "0669876543",
-    email: "kotiachyi.svit@gmail.com",
-    workingHours: "Вт-Нд 10:00-18:00",
-    foundedAt: "2021",
-  },
-];

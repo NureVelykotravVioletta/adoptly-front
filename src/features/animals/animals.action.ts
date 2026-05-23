@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError } from "@/src/features/auth/auth.api";
-import { isAdminUser } from "@/src/features/auth/auth.roles";
-import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
+import { ApiError } from "@/src/lib/api";
+import {
+  getStringValue,
+  requireAdmin,
+  validateImageFile,
+} from "@/src/lib/action-utils";
 import {
   createAnimal,
   deleteAnimalPhoto,
@@ -49,17 +52,16 @@ export type RemoveShelterAnimalActionState = {
   error?: string;
 };
 
-const MAX_ANIMAL_PHOTO_SIZE = 5 * 1024 * 1024;
-
 export async function createAnimalAction(
   formData: FormData
 ): Promise<CreateAnimalActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для створення тварини." };
   }
+
+  const { token } = auth;
 
   const payload = getCreateAnimalPayload(formData);
 
@@ -67,7 +69,7 @@ export async function createAnimalAction(
     return { error: payload.error };
   }
 
-  const image = getOptionalImage(formData);
+  const image = validateImageFile(formData);
 
   if ("error" in image) {
     return { error: image.error };
@@ -95,12 +97,13 @@ export async function deleteAnimalAction(
   animalId: string,
   shelterId?: string | null
 ): Promise<DeleteAnimalActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для видалення тварини." };
   }
+
+  const { token } = auth;
 
   try {
     await deleteAnimal(token, animalId);
@@ -128,12 +131,13 @@ export async function updateAnimalAction(
   animalId: string,
   formData: FormData
 ): Promise<UpdateAnimalActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для редагування тварини." };
   }
+
+  const { token } = auth;
 
   const payload = getUpdateAnimalPayload(formData);
 
@@ -167,14 +171,14 @@ export async function uploadAnimalPhotoAction(
   animalId: string,
   formData: FormData
 ): Promise<UploadAnimalPhotoActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для додавання фото тварини." };
   }
 
-  const image = getOptionalImage(formData);
+  const { token } = auth;
+  const image = validateImageFile(formData);
 
   if ("error" in image) {
     return { error: image.error };
@@ -206,12 +210,13 @@ export async function deleteAnimalPhotoAction(
   animalId: string,
   photoUrl: string
 ): Promise<DeleteAnimalPhotoActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для видалення фото тварини." };
   }
+
+  const { token } = auth;
 
   try {
     await deleteAnimalPhoto(token, animalId, photoUrl);
@@ -376,47 +381,17 @@ function getUpdateAnimalPayload(
   return { data: payload };
 }
 
-function getOptionalImage(
-  formData: FormData
-): { file: File | null } | { error: string } {
-  const file =
-    formData.get("image") ??
-    formData.get("photo") ??
-    formData.get("file") ??
-    formData.get("photos") ??
-    formData.get("images");
-
-  if (!(file instanceof File) || file.size === 0) {
-    return { file: null };
-  }
-
-  if (!file.type.startsWith("image/")) {
-    return { error: "Файл має бути зображенням." };
-  }
-
-  if (file.size > MAX_ANIMAL_PHOTO_SIZE) {
-    return { error: "Фото має бути не більше 5MB." };
-  }
-
-  return { file };
-}
-
-function getStringValue(formData: FormData, field: string) {
-  const value = formData.get(field);
-
-  return typeof value === "string" ? value.trim() : "";
-}
-
 export async function removeShelterAnimalAction(
   shelterId: string,
   animalId: string
 ): Promise<RemoveShelterAnimalActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для видалення тварини з притулку." };
   }
+
+  const { token } = auth;
 
   try {
     await removeAnimalFromShelter(token, shelterId, animalId);

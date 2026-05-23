@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError } from "@/src/features/auth/auth.api";
-import { isAdminUser } from "@/src/features/auth/auth.roles";
-import { getAuthToken, getCurrentUser } from "@/src/features/auth/auth.session";
+import { ApiError } from "@/src/lib/api";
+import { getStringValue, requireAdmin } from "@/src/lib/action-utils";
 import {
   createArticle,
   deleteArticle,
@@ -33,12 +32,13 @@ export type DeleteArticleActionState = {
 export async function createArticleAction(
   formData: FormData,
 ): Promise<CreateArticleActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для створення статті." };
   }
+
+  const { token } = auth;
 
   const payload = getCreateArticlePayload(formData);
 
@@ -66,12 +66,13 @@ export async function updateArticleAction(
   articleId: string,
   formData: FormData,
 ): Promise<UpdateArticleActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для редагування статті." };
   }
+
+  const { token } = auth;
 
   const payload = getUpdateArticlePayload(formData);
 
@@ -103,12 +104,13 @@ export async function updateArticleAction(
 export async function deleteArticleAction(
   articleId: string,
 ): Promise<DeleteArticleActionState> {
-  const token = await getAuthToken();
-  const user = await getCurrentUser();
+  const auth = await requireAdmin();
 
-  if (!token || !isAdminUser(user)) {
+  if ("error" in auth) {
     return { error: "Недостатньо прав для видалення статті." };
   }
+
+  const { token } = auth;
 
   try {
     await deleteArticle(token, articleId);
@@ -181,12 +183,6 @@ function getUpdateArticlePayload(
   }
 
   return { data: payload };
-}
-
-function getStringValue(formData: FormData, field: string) {
-  const value = formData.get(field);
-
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function getOptionalImageValue(formData: FormData) {

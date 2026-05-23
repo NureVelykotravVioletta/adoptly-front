@@ -11,6 +11,7 @@ import { useRegisterViewModel } from "@/src/features/auth/register/register.view
 import CrossIcon from "@/src/assets/icons/CrossIcon.svg";
 import EyeOffIcon from "@/src/assets/icons/EyeOffIcon.svg";
 import EyeOnIcon from "@/src/assets/icons/EyeOnIcon.svg";
+import { GoogleAuthButton } from "@/src/features/auth/google/GoogleAuthButton";
 import {
   type RegisterFieldName,
   initialRegisterActionState,
@@ -238,6 +239,8 @@ export function RegisterForm() {
 
             <div className="pt-2">
               <SubmitButton />
+              <GoogleAuthButton />
+
               <p className="mt-4 text-center text-[14px] text-[rgba(38,38,38,0.8)]">
                 Вже маєте акаунт?{" "}
                 <Link
