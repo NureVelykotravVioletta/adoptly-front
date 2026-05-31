@@ -186,7 +186,7 @@ export async function uploadShelterPhotoAction(
 
 export async function deleteShelterPhotoAction(
   shelterId: string,
-  photoUrl: string
+  imageId: string
 ): Promise<DeleteShelterPhotoActionState> {
   const auth = await requireAdmin();
 
@@ -196,12 +196,12 @@ export async function deleteShelterPhotoAction(
 
   const { token } = auth;
 
-  if (!photoUrl.trim()) {
+  if (!imageId.trim()) {
     return { error: "Не вдалося визначити фото для видалення." };
   }
 
   try {
-    await deleteShelterPhoto(token, shelterId, photoUrl);
+    await deleteShelterPhoto(token, shelterId, imageId);
 
     revalidatePath("/shelters");
     revalidatePath(`/shelters/${shelterId}`);
@@ -284,17 +284,6 @@ function getUpdateShelterPayload(
 
   if (imageUrl !== null) {
     payload.imageUrl = imageUrl.length > 0 ? imageUrl : null;
-  }
-
-  const images = formData
-    .getAll("images")
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (formData.has("images")) {
-    payload.images = images;
-    payload.imageUrl = images[0] ?? null;
   }
 
   if (payload.name !== undefined && payload.name.length === 0) {

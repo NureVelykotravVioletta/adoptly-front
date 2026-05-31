@@ -11,8 +11,8 @@ import { FALLBACK_SHELTERS } from "@/src/features/shelters/shelters.fallback";
 import type {
   ApiPage,
   CreateShelterRequest,
+  EntityImage,
   Shelter,
-  ShelterApiImage,
   ShelterApiItem,
   SheltersApiResponse,
   SheltersQuery,
@@ -263,18 +263,12 @@ export async function uploadShelterPhoto(
         cache: "no-store",
         body: formData,
       });
-      const responseText = await response.text().catch(() => "");
-      const data = (responseText ? safeParseJson(responseText) : null) as
-        | ShelterApiItem
-        | Partial<{
-            item: ShelterApiItem;
-            data: ShelterApiItem;
-            shelter: ShelterApiItem;
-            message: string | string[];
-          }>
-        | null;
 
       if (!response.ok) {
+        const responseText = await response.text().catch(() => "");
+        const data = (responseText ? safeParseJson(responseText) : null) as
+          | Partial<{ message: string | string[] }>
+          | null;
         const error = new ApiError(
           getApiErrorMessage(data, "Не вдалося завантажити фото притулку.", {
               responseText,
@@ -290,14 +284,7 @@ export async function uploadShelterPhoto(
         throw error;
       }
 
-      const apiItem =
-        data && isRecord(data) && isShelterDetailsResponse(data)
-          ? (data.item ?? data.data ?? data.shelter)
-          : data;
-
-      return apiItem && isRecord(apiItem) && isShelterItemRecord(apiItem)
-        ? normalizeShelter(apiItem)
-        : null;
+      return getShelter(shelterId);
     }
   }
 
@@ -314,12 +301,12 @@ function isUnexpectedUploadFieldError(error: ApiError) {
 export async function deleteShelterPhoto(
   token: string,
   shelterId: string,
-  photoUrl: string
+  imageId: string
 ) {
   const response = await fetch(
     new URL(
-      `/shelter/${encodeURIComponent(shelterId)}/photo/${encodeURIComponent(
-        photoUrl
+      `/shelters/${encodeURIComponent(shelterId)}/images/${encodeURIComponent(
+        imageId
       )}`,
       getApiBaseUrl()
     ),
@@ -468,17 +455,16 @@ function normalizeShelter(shelter: ShelterApiItem, index = 0): Shelter {
     shelter.pets?.length ??
     0;
 
-  const images = getShelterImageUrls(shelter);
+  const images = normalizeShelterImages(shelter);
 
   return {
     id: String(id),
     name: shelter.name ?? shelter.title ?? "Без назви",
     city:
-      normalizeCityRef(shelter.city) ||
-      (shelter.location ?? shelter.address ?? "Місто не вказано"),
+      shelter.city ?? shelter.location ?? shelter.address ?? "Місто не вказано",
     address: shelter.address ?? "",
     description: shelter.description ?? shelter.about ?? "",
-    imageUrl: images[0] ?? null,
+    imageUrl: images[0]?.imageUrl ?? null,
     images,
     animalsCount,
     rating: shelter.rating ?? shelter.stars ?? 0,
@@ -496,42 +482,19 @@ function normalizeShelter(shelter: ShelterApiItem, index = 0): Shelter {
   };
 }
 
-function getShelterImageUrls(shelter: ShelterApiItem) {
-  return [
-    shelter.imageUrl,
-    shelter.image,
-    shelter.photoUrl,
-    shelter.coverUrl,
-    ...getRawShelterImageUrls(shelter.images),
-  ]
-    .map(normalizeImageUrl)
-    .filter((url): url is string => Boolean(url));
-}
+function normalizeShelterImages(shelter: ShelterApiItem): EntityImage[] {
+  const items = shelter.images ?? [];
+  const result: EntityImage[] = [];
 
-function getRawShelterImageUrls(images: ShelterApiImage[] | undefined) {
-  if (!images) {
-    return [];
+  for (const item of items) {
+    const url = normalizeImageUrl(item.imageUrl);
+
+    if (url) {
+      result.push({ id: item.id, imageUrl: url, publicId: item.publicId });
+    }
   }
 
-  return images
-    .map((image) => {
-      if (typeof image === "string") {
-        return image;
-      }
-
-      if (image && typeof image === "object") {
-        return (
-          image.url ??
-          image.src ??
-          image.imageUrl ??
-          image.secureUrl ??
-          image.path
-        );
-      }
-
-      return null;
-    })
-    .filter((url): url is string => Boolean(url));
+  return result;
 }
 
 function formatFoundedAt(value: string | number | undefined) {
@@ -545,20 +508,6 @@ function formatFoundedAt(value: string | number | undefined) {
 
   const year = new Date(value).getFullYear();
   return Number.isNaN(year) ? value : String(year);
-}
-
-function normalizeCityRef(
-  value: string | { name?: string } | null | undefined,
-): string {
-  if (!value) {
-    return "";
-  }
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  return value.name ?? "";
 }
 
 function isShelterDetailsResponse(

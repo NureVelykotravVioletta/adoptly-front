@@ -12,14 +12,30 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "3 роки",
     gender: "Самець",
     genderCode: "MALE",
+    breed: null,
     city: "Київ",
     description: "Дружній, любить гратися та обійматися",
     imageUrl:
       "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "murczyk-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/murczyk-1",
+      },
+      {
+        id: "murczyk-img-2",
+        imageUrl:
+          "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/murczyk-2",
+      },
+      {
+        id: "murczyk-img-3",
+        imageUrl:
+          "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/murczyk-3",
+      },
     ],
     healthStatus: "Вакцинований",
     shelterId: "hvostyky",
@@ -34,13 +50,19 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "1 рік",
     gender: "Самка",
     genderCode: "FEMALE",
+    breed: null,
     city: "Львів",
     description:
       "Спокійна та лагідна кішка, любить затишок і тихі вечори поруч із господарем.",
     imageUrl:
       "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "luna-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/luna-1",
+      },
     ],
     healthStatus: "Вакцинована",
     shelterId: "lapky-nadii",
@@ -55,13 +77,19 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "2 роки",
     gender: "Самець",
     genderCode: "MALE",
+    breed: null,
     city: "Харків",
     description:
       "Енергійний та відданий пес, чудово підходить для активної родини та прогулянок.",
     imageUrl:
       "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "barni-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/barni-1",
+      },
     ],
     healthStatus: "Вакцинований",
     shelterId: "druhe-zhyttia",
@@ -76,13 +104,19 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "2 роки",
     gender: "Самка",
     genderCode: "FEMALE",
+    breed: null,
     city: "Одеса",
     description:
       "Ніжна та обережна кішка, яка потребує трохи часу, щоб довіритися, але дуже ласкава.",
     imageUrl:
       "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "snizhka-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/snizhka-1",
+      },
     ],
     healthStatus: "Стерилізована",
     shelterId: "tepli-lapy",
@@ -97,13 +131,19 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "2 роки",
     gender: "Самець",
     genderCode: "MALE",
+    breed: null,
     city: "Київ",
     description:
       "Активний і допитливий кіт, любить гратися та досліджувати все навколо.",
     imageUrl:
       "https://images.unsplash.com/photo-1574144611937-0df059b5ef3e?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1574144611937-0df059b5ef3e?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "richi-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1574144611937-0df059b5ef3e?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/richi-1",
+      },
     ],
     healthStatus: "Здоровий",
     shelterId: "hvostyky",
@@ -118,13 +158,19 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "0.5 року",
     gender: "Самка",
     genderCode: "FEMALE",
+    breed: null,
     city: "Вінниця",
     description:
       "Спокійна та дуже ніжна собака, ідеально підійде для тихого дому та неспішних прогулянок.",
     imageUrl:
       "https://images.unsplash.com/photo-1601979031925-424e53b6caaa?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1601979031925-424e53b6caaa?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "bonia-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1601979031925-424e53b6caaa?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/bonia-1",
+      },
     ],
     healthStatus: "Вакцинована",
     shelterId: "kotiachyi-svit",
@@ -139,13 +185,19 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "4 роки",
     gender: "Самець",
     genderCode: "MALE",
+    breed: null,
     city: "Дніпро",
     description:
       "Розумний пес із добрим характером, швидко вчиться і цінує увагу.",
     imageUrl:
       "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "archie-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/archie-1",
+      },
     ],
     healthStatus: "Вакцинований",
     shelterId: "virnyi-druh",
@@ -160,12 +212,18 @@ export const FALLBACK_ANIMALS: (Animal & {
     age: "1 рік",
     gender: "Самка",
     genderCode: "FEMALE",
+    breed: null,
     city: "Київ",
     description: "Грайлива кішка з м'яким характером, добре ладнає з людьми.",
     imageUrl:
       "https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=640&q=80",
     images: [
-      "https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80",
+      {
+        id: "mila-img-1",
+        imageUrl:
+          "https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80",
+        publicId: "fallback/mila-1",
+      },
     ],
     healthStatus: "Здорова",
     shelterId: "hvostyky",

@@ -110,6 +110,12 @@ export type AnimalGender = "MALE" | "FEMALE";
 
 export type AnimalStatus = "AVAILABLE" | "PENDING" | "ADOPTED";
 
+export type EntityImage = {
+  id: ApiId;
+  imageUrl: string;
+  publicId: string;
+};
+
 export type Animal = {
   id: ApiId;
   name: string;
@@ -118,11 +124,11 @@ export type Animal = {
   age: string;
   gender: string;
   genderCode: AnimalGender | string;
-  breed?: string;
+  breed: string | null;
   city: string;
   description: string;
   imageUrl: string | null;
-  images: string[];
+  images: EntityImage[];
   healthStatus: string;
   shelterId: ApiId | null;
   shelterName: string;
@@ -165,28 +171,12 @@ export type AnimalImageUploadRequest = {
   image: File;
 };
 
-export type ApiImage = Partial<{
-  id: ApiId;
-  animalId: ApiId;
-  shelterId: ApiId;
-  imageUrl: string;
-  publicId: string;
-  url: string | null;
-  src: string | null;
-  secureUrl: string | null;
-  path: string | null;
-}>;
-
-export type ApiCityRef = { id?: ApiId; name?: string } | string;
-
-export type ApiBreedRef = { id?: ApiId; name?: string } | string | null;
-
 export type AnimalShelterResponse = Partial<{
   id: ApiId;
   _id: ApiId;
   name: string;
   title: string;
-  city: ApiCityRef;
+  city: string;
   location: string;
 }>;
 
@@ -197,9 +187,9 @@ export type AnimalResponse = PrismaTimestamps &
     name: string;
     type: AnimalType | string;
     gender: AnimalGender | string;
-    city: ApiCityRef;
+    city: string;
     age: number | string;
-    breed: ApiBreedRef;
+    breed: string | null;
     healthStatus: string;
     description: string;
     status: AnimalStatus | string;
@@ -207,16 +197,14 @@ export type AnimalResponse = PrismaTimestamps &
     imageUrl: string | null;
     image: string | null;
     photoUrl: string | null;
-    images: (ApiImage | string | null)[];
+    images: EntityImage[];
     shelter: AnimalShelterResponse | null;
   }>;
 
 export type AnimalsResponse = ApiPaginatedResponse<AnimalResponse>;
 export type AnimalDetailsResponse = AnimalResponse;
 export type DeleteAnimalResponse = ApiMessageResponse;
-export type UploadAnimalImageResponse = Required<
-  Pick<ApiImage, "id" | "animalId" | "imageUrl" | "publicId">
->;
+export type UploadAnimalImageResponse = EntityImage;
 export type DeleteAnimalImageResponse = ApiMessageResponse;
 
 export type LikedAnimalResponse = AnimalResponse &
@@ -240,7 +228,6 @@ export type ApiPaginationMeta = Partial<
 >;
 
 export type AnimalApiItem = AnimalResponse;
-export type AnimalApiImage = NonNullable<AnimalResponse["images"]>[number];
 export type AnimalsApiResponse = Partial<
   AnimalsResponse & {
     items: AnimalApiItem[];
@@ -290,7 +277,7 @@ export type Shelter = {
   address: string;
   description: string;
   imageUrl: string | null;
-  images: string[];
+  images: EntityImage[];
   animalsCount: number;
   rating: number;
   phone: string;
@@ -328,7 +315,6 @@ export type UpdateShelterRequest = Partial<{
   foundationDate: string;
   workingHours: string;
   imageUrl: string | null;
-  images: string[];
   animalsCount: number;
   foundedAt: string;
 }>;
@@ -345,7 +331,7 @@ export type ShelterResponse = PrismaTimestamps &
     title: string;
     description: string;
     about: string;
-    city: ApiCityRef;
+    city: string;
     location: string;
     address: string;
     phone: string;
@@ -364,7 +350,7 @@ export type ShelterResponse = PrismaTimestamps &
     image: string | null;
     photoUrl: string | null;
     coverUrl: string | null;
-    images: (ApiImage | string | null)[];
+    images: EntityImage[];
     animals: unknown[];
     pets: unknown[];
     animalsCount: number;
@@ -382,13 +368,10 @@ export type DeleteShelterResponse = ApiMessageResponse;
 export type RemoveShelterAnimalResponse = ApiMessageResponse & {
   animal: AnimalResponse;
 };
-export type UploadShelterImageResponse = Required<
-  Pick<ApiImage, "id" | "shelterId" | "imageUrl" | "publicId">
->;
+export type UploadShelterImageResponse = EntityImage;
 export type DeleteShelterImageResponse = ApiMessageResponse;
 
 export type ShelterApiItem = ShelterResponse;
-export type ShelterApiImage = NonNullable<ShelterResponse["images"]>[number];
 export type SheltersApiResponse = Partial<
   SheltersResponse & {
     items: ShelterApiItem[];
@@ -555,43 +538,3 @@ export type CreateArticleRequest = {
 };
 
 export type UpdateArticleRequest = Partial<CreateArticleRequest>;
-
-export type ReminderStatus = "PENDING" | "DONE" | string;
-
-export type Reminder = {
-  id: ApiId;
-  title: string;
-  description: string | null;
-  reminderDate: string;
-  animalId: ApiId | null;
-  status: ReminderStatus;
-};
-
-export type ReminderResponse = PrismaTimestamps & {
-  id: ApiId;
-  title: string;
-  description: string | null;
-  reminderDate: string;
-  status: ReminderStatus;
-  userId: ApiId;
-  animalId: ApiId | null;
-  animal?: AnimalResponse;
-};
-
-export type RemindersResponse = ReminderResponse[];
-export type DeleteReminderResponse = ApiMessageResponse;
-
-export type CreateReminderRequest = {
-  title: string;
-  description?: string;
-  reminderDate: string;
-  animalId?: ApiId;
-};
-
-export type UpdateReminderRequest = Partial<{
-  title: string;
-  description: string;
-  reminderDate: string;
-  animalId: ApiId;
-  status: ReminderStatus;
-}>;

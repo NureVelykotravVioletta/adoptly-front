@@ -208,7 +208,7 @@ export async function uploadAnimalPhotoAction(
 
 export async function deleteAnimalPhotoAction(
   animalId: string,
-  photoUrl: string
+  imageId: string
 ): Promise<DeleteAnimalPhotoActionState> {
   const auth = await requireAdmin();
 
@@ -219,7 +219,7 @@ export async function deleteAnimalPhotoAction(
   const { token } = auth;
 
   try {
-    await deleteAnimalPhoto(token, animalId, photoUrl);
+    await deleteAnimalPhoto(token, animalId, imageId);
 
     revalidatePath("/animals");
     revalidatePath(`/animals/${animalId}`);

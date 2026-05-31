@@ -11,6 +11,7 @@ import {
   uploadAnimalPhotoAction,
 } from "@/src/features/animals/animals.action";
 import type { Animal } from "@/src/features/animals/animals.api";
+import type { EntityImage } from "@/src/types/api";
 import {
   AdminAnimalInfoForm,
   getAnimalInfoValues,
@@ -37,7 +38,7 @@ type AdminAnimalEditViewProps = {
   animal: Animal;
 };
 
-type ConfirmAction = { type: "photo"; photoUrl: string };
+type ConfirmAction = { type: "photo"; imageId: string };
 
 export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
   const router = useRouter();
@@ -123,7 +124,7 @@ export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
 
         if (uploadResult.animal) {
           setExistingPhotos((currentPhotos) =>
-            mergePhotoUrls(currentPhotos, uploadResult.animal?.images ?? [])
+            mergePhotos(currentPhotos, uploadResult.animal?.images ?? [])
           );
         }
 
@@ -182,7 +183,7 @@ export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
     startTransition(async () => {
       const result = await deleteAnimalPhotoAction(
         animal.id,
-        confirmAction.photoUrl
+        confirmAction.imageId
       );
 
       if (result.error) {
@@ -191,7 +192,7 @@ export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
       }
 
       setExistingPhotos((currentPhotos) =>
-        currentPhotos.filter((photo) => photo !== confirmAction.photoUrl)
+        currentPhotos.filter((photo) => photo.id !== confirmAction.imageId)
       );
       setConfirmAction(null);
       router.refresh();
@@ -280,8 +281,8 @@ export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
           existingPhotos={existingPhotos}
           pendingPhotos={pendingPhotos}
           onAddPhotos={handleAddPhotos}
-          onRemoveExistingPhoto={(photo) => {
-            setConfirmAction({ type: "photo", photoUrl: photo });
+          onRemoveExistingPhoto={(imageId) => {
+            setConfirmAction({ type: "photo", imageId });
             setError("");
             setConfirmError("");
           }}
@@ -311,6 +312,19 @@ export function AdminAnimalEditView({ animal }: AdminAnimalEditViewProps) {
   );
 }
 
-function mergePhotoUrls(currentPhotos: string[], uploadedPhotos: string[]) {
-  return Array.from(new Set([...currentPhotos, ...uploadedPhotos]));
+function mergePhotos(
+  currentPhotos: EntityImage[],
+  uploadedPhotos: EntityImage[]
+): EntityImage[] {
+  const merged = [...currentPhotos];
+  const seenIds = new Set(currentPhotos.map((photo) => photo.id));
+
+  for (const photo of uploadedPhotos) {
+    if (!seenIds.has(photo.id)) {
+      merged.push(photo);
+      seenIds.add(photo.id);
+    }
+  }
+
+  return merged;
 }

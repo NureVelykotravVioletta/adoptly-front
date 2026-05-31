@@ -1,6 +1,7 @@
 "use client";
 
 import TrashIcon from "@/src/assets/icons/TrashIcon.svg";
+import type { EntityImage } from "@/src/types/api";
 
 export type PendingShelterPhoto = {
   id: string;
@@ -9,13 +10,13 @@ export type PendingShelterPhoto = {
 };
 
 type AdminShelterPhotosSectionProps = {
-  existingPhotos: string[];
+  existingPhotos: EntityImage[];
   pendingPhotos: PendingShelterPhoto[];
   title?: string;
   addButtonLabel?: string;
   emptyText?: string;
   onAddPhotos: (files: File[]) => void;
-  onRemoveExistingPhoto: (photo: string) => void;
+  onRemoveExistingPhoto: (imageId: string) => void;
   onRemovePendingPhoto: (photoId: string) => void;
 };
 
@@ -31,8 +32,8 @@ export function AdminShelterPhotosSection({
 }: AdminShelterPhotosSectionProps) {
   const photos = [
     ...existingPhotos.map((photo) => ({
-      id: photo,
-      src: photo,
+      id: photo.id,
+      src: photo.imageUrl,
       type: "existing" as const,
     })),
     ...pendingPhotos.map((photo) => ({
@@ -90,7 +91,7 @@ export function AdminShelterPhotosSection({
                 aria-label="Видалити фото"
                 onClick={() =>
                   photo.type === "existing"
-                    ? onRemoveExistingPhoto(photo.src)
+                    ? onRemoveExistingPhoto(photo.id)
                     : onRemovePendingPhoto(photo.id)
                 }
                 className="absolute top-4 right-4 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#FFDADA] text-[#E22F2F] opacity-0 shadow-[0_8px_24px_rgba(38,38,38,0.12)] transition group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E22F2F]"

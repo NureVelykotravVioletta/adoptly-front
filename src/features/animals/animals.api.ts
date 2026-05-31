@@ -11,12 +11,12 @@ import { buildPage, extractPageMeta, paginate } from "@/src/lib/pagination";
 import { FALLBACK_ANIMALS } from "@/src/features/animals/animals.fallback";
 import type {
   Animal,
-  AnimalApiImage,
   AnimalApiItem,
   AnimalsApiResponse,
   AnimalsQuery,
   ApiPage,
   CreateAnimalRequest,
+  EntityImage,
   LikedAnimalApiItem,
   LikedAnimalsApiResponse,
   UpdateAnimalRequest,
@@ -261,69 +261,50 @@ export async function uploadAnimalPhoto(
       body: formData,
     }
   );
-  const result = await parseCreateAnimalResponse(response);
 
-  if (!result.ok) {
-    throw result.error;
+  if (!response.ok) {
+    const result = await parseCreateAnimalResponse(response);
+
+    if (!result.ok) {
+      throw result.error;
+    }
   }
 
-  return result.animal ?? (await getAnimal(animalId));
+  return getAnimal(animalId);
 }
 
 export async function deleteAnimalPhoto(
   token: string,
   animalId: string,
-  photoUrl: string
+  imageId: string
 ) {
-  const requests = [
-    `/animals/${encodeURIComponent(animalId)}/images/${encodeURIComponent(
-      photoUrl
-    )}`,
-    `/animals/${encodeURIComponent(animalId)}/photos/${encodeURIComponent(
-      photoUrl
-    )}`,
-    `/animals/${encodeURIComponent(animalId)}/image/${encodeURIComponent(
-      photoUrl
-    )}`,
-    `/animals/${encodeURIComponent(animalId)}/photo/${encodeURIComponent(
-      photoUrl
-    )}`,
-  ];
-  let lastRouteError: ApiError | null = null;
-
-  for (const pathname of requests) {
-    const response = await fetch(createApiUrl(pathname), {
+  const response = await fetch(
+    createApiUrl(
+      `/animals/${encodeURIComponent(animalId)}/images/${encodeURIComponent(
+        imageId
+      )}`
+    ),
+    {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
       },
       cache: "no-store",
-    });
-
-    if (response.ok) {
-      return;
     }
+  );
 
-    const responseText = await response.text().catch(() => "");
-    const data = (responseText ? safeParseJson(responseText) : null) as {
-      message?: string | string[];
-    } | null;
-    const error = new ApiError(
-      getApiErrorMessage(data, "Не вдалося видалити фото тварини."),
-      response.status
-    );
-
-    if (response.status === 404) {
-      lastRouteError = error;
-      continue;
-    }
-
-    throw error;
+  if (response.ok) {
+    return;
   }
 
-  throw (
-    lastRouteError ??
-    new ApiError("Не знайдено endpoint для видалення фото тварини.", 404)
+  const responseText = await response.text().catch(() => "");
+  const data = (responseText ? safeParseJson(responseText) : null) as {
+    message?: string | string[];
+  } | null;
+
+  throw new ApiError(
+    getApiErrorMessage(data, "Не вдалося видалити фото тварини."),
+    response.status
   );
 }
 
@@ -693,7 +674,7 @@ function normalizeAnimal(animal: AnimalApiItem, index: number): Animal {
   const category = normalizeCategory(animal.type);
   const genderCode = normalizeGenderCode(animal.gender);
   const gender = normalizeGender(animal.gender);
-  const images = getAnimalImageUrls(animal);
+  const images = normalizeAnimalImages(animal);
   const shelterId =
     animal.shelterId ?? animal.shelter?.id ?? animal.shelter?._id;
 
@@ -705,13 +686,11 @@ function normalizeAnimal(animal: AnimalApiItem, index: number): Animal {
     age: formatAge(animal.age),
     gender,
     genderCode,
-    breed: normalizeRef(animal.breed),
+    breed: animal.breed ?? null,
     city:
-      normalizeRef(animal.shelter?.city) ||
-      normalizeRef(animal.city) ||
-      "Місто не вказано",
+      animal.shelter?.city ?? animal.city ?? "Місто не вказано",
     description: animal.description ?? "",
-    imageUrl: images[0] ?? null,
+    imageUrl: images[0]?.imageUrl ?? null,
     images,
     healthStatus: normalizeHealthStatus(animal.healthStatus ?? animal.status),
     shelterId: shelterId ? String(shelterId) : null,
@@ -721,48 +700,19 @@ function normalizeAnimal(animal: AnimalApiItem, index: number): Animal {
   };
 }
 
-function getAnimalImageUrls(animal: AnimalApiItem) {
-  const urls = [
-    animal.imageUrl,
-    animal.image,
-    animal.photoUrl,
-    ...getRawAnimalImageUrls(animal.images),
-  ];
-  const normalizedUrls = urls
-    .map((url) => normalizeImageUrl(url))
-    .filter((url): url is string => Boolean(url));
+function normalizeAnimalImages(animal: AnimalApiItem): EntityImage[] {
+  const items = animal.images ?? [];
+  const result: EntityImage[] = [];
 
-  return Array.from(new Set(normalizedUrls));
-}
+  for (const item of items) {
+    const url = normalizeImageUrl(item.imageUrl);
 
-function getRawAnimalImageUrls(images: AnimalApiImage[] | undefined) {
-  const urls: string[] = [];
-
-  if (!images) {
-    return urls;
-  }
-
-  for (const image of images) {
-    if (typeof image === "string" && image) {
-      urls.push(image);
-      continue;
-    }
-
-    if (image && typeof image === "object") {
-      const url =
-        image.url ??
-        image.src ??
-        image.imageUrl ??
-        image.secureUrl ??
-        image.path;
-
-      if (url) {
-        urls.push(url);
-      }
+    if (url) {
+      result.push({ id: item.id, imageUrl: url, publicId: item.publicId });
     }
   }
 
-  return urls;
+  return result;
 }
 
 function normalizeCategory(value: string | undefined) {
@@ -871,16 +821,3 @@ function getYearWord(value: number) {
   return "років";
 }
 
-function normalizeRef(
-  value: string | { name?: string } | null | undefined,
-): string {
-  if (!value) {
-    return "";
-  }
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  return value.name ?? "";
-}

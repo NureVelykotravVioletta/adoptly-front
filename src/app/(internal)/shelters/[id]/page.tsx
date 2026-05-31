@@ -26,7 +26,7 @@ export default async function ShelterDetailsPage({
     notFound();
   }
 
-  const images = shelter.images.length > 0 ? shelter.images : [];
+  const images = shelter.images.map((image) => image.imageUrl);
   const shelterAnimals = await getShelterAnimals({
     shelterId: shelter.id,
   });

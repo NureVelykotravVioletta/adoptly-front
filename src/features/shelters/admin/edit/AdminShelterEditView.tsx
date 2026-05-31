@@ -42,7 +42,7 @@ type AdminShelterEditViewProps = {
 };
 
 type ConfirmAction =
-  | { type: "photo"; photoUrl: string }
+  | { type: "photo"; imageId: string }
   | { type: "animal"; animal: Animal };
 
 export function AdminShelterEditView({
@@ -127,9 +127,11 @@ export function AdminShelterEditView({
         if (uploadResult.shelter) {
           setExistingPhotos((currentPhotos) => {
             const merged = [...currentPhotos];
+            const seenIds = new Set(currentPhotos.map((photo) => photo.id));
             for (const img of uploadResult.shelter!.images) {
-              if (!merged.includes(img)) {
+              if (!seenIds.has(img.id)) {
                 merged.push(img);
+                seenIds.add(img.id);
               }
             }
             return merged;
@@ -206,7 +208,7 @@ export function AdminShelterEditView({
       if (confirmAction.type === "photo") {
         const result = await deleteShelterPhotoAction(
           shelter.id,
-          confirmAction.photoUrl
+          confirmAction.imageId
         );
 
         if (result.error) {
@@ -215,7 +217,7 @@ export function AdminShelterEditView({
         }
 
         setExistingPhotos((currentPhotos) =>
-          currentPhotos.filter((photo) => photo !== confirmAction.photoUrl)
+          currentPhotos.filter((photo) => photo.id !== confirmAction.imageId)
         );
       } else {
         const result = await removeShelterAnimalAction(
@@ -321,8 +323,8 @@ export function AdminShelterEditView({
           existingPhotos={existingPhotos}
           pendingPhotos={pendingPhotos}
           onAddPhotos={handleAddPhotos}
-          onRemoveExistingPhoto={(photo) => {
-            setConfirmAction({ type: "photo", photoUrl: photo });
+          onRemoveExistingPhoto={(imageId) => {
+            setConfirmAction({ type: "photo", imageId });
             setError("");
             setConfirmError("");
           }}

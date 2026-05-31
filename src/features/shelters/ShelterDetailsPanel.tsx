@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { DetailTabs } from "@/src/components/common/DetailTabs";
 import { AnimalCard } from "@/src/features/animals/AnimalCard";
 import type { Animal } from "@/src/features/animals/animals.api";
+import { DonateDialog } from "@/src/features/donations/DonateDialog";
 import type { Shelter } from "@/src/features/shelters/shelters.api";
 import { getAnimalsWord, getDescriptionParagraphs } from "@/src/lib/format";
 
@@ -58,12 +59,12 @@ export function ShelterDetailsPanel({
         )
       ) : null}
 
-      {activeTab === "Допомога" ? <ShelterHelp /> : null}
+      {activeTab === "Допомога" ? <ShelterHelp shelter={shelter} /> : null}
     </div>
   );
 }
 
-function ShelterHelp() {
+function ShelterHelp({ shelter }: { shelter: Shelter }) {
   return (
     <article className="rounded-[44px] bg-white px-6 py-8 shadow-[0_8px_24px_rgba(38,38,38,0.04)] sm:rounded-[54px] sm:px-10 lg:px-14 lg:py-12">
       <h1 className="mb-3 text-3xl leading-tight font-bold text-[#262626] sm:text-4xl">
@@ -74,10 +75,11 @@ function ShelterHelp() {
         допомогти їм знайти новий дім.
       </p>
 
-      <div className="mt-6 border-t border-[#E2E2E2]" />
-
-      <div className="flex min-h-60 items-center justify-center px-4 text-center text-base leading-6 text-[#8E8E8E]">
-        Інформацію про допомогу буде додано пізніше.
+      <div className="mt-8 flex flex-wrap items-center gap-4">
+        <DonateDialog shelterId={shelter.id} shelterName={shelter.name} />
+        <span className="text-sm leading-6 text-[#8E8E8E]">
+          Оплата захищена Stripe. Email вкажете на сторінці оплати.
+        </span>
       </div>
     </article>
   );

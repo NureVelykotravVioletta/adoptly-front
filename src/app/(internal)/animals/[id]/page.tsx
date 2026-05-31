@@ -34,7 +34,7 @@ export default async function AnimalDetailsPage({
     notFound();
   }
 
-  const images = animal.images.length > 0 ? animal.images : [];
+  const images = animal.images.map((image) => image.imageUrl);
   const token = await getAuthToken();
   const currentUser = token ? await getCurrentUser() : null;
   const userLikedAnimals = await normalizeLikedAnimalsData(
