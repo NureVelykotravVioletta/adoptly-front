@@ -28,7 +28,7 @@ export const HeaderSidebar = ({
   return (
     <div
       className={clsx(
-        "fixed inset-0 z-40 transition lg:hidden",
+        "fixed inset-0 z-60 transition lg:hidden",
         isOpen ? "pointer-events-auto" : "pointer-events-none",
       )}
       aria-hidden={!isOpen}
